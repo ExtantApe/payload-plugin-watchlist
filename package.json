@@ -1,0 +1,102 @@
+{
+  "name": "@extantape/payload-plugin-watchlist",
+  "version": "0.1.0",
+  "description": "Watchlist for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.",
+  "homepage": "https://github.com/ExtantApe/payload-plugin-watchlist#readme",
+  "bugs": {
+    "url": "https://github.com/ExtantApe/payload-plugin-watchlist/issues"
+  },
+  "keywords": [
+    "payload",
+    "payload-plugin",
+    "payloadcms",
+    "media",
+    "integrations",
+    "multi-tenant",
+    "youtube",
+    "youtube-data-api",
+    "youtube-nocookie",
+    "rss",
+    "video",
+    "video-curation",
+    "curation",
+    "moderation",
+    "video-embed"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ExtantApe/payload-plugin-watchlist.git"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js"
+    },
+    "./pages": {
+      "types": "./dist/pages/index.d.ts",
+      "import": "./dist/pages/index.js"
+    },
+    "./client": {
+      "types": "./dist/client/index.d.ts",
+      "import": "./dist/client/index.js"
+    },
+    "./rsc": {
+      "types": "./dist/rsc/index.d.ts",
+      "import": "./dist/rsc/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "leak-check": "bash scripts/leak-check.sh",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm test"
+  },
+  "peerDependencies": {
+    "@payloadcms/next": "^3.92.0",
+    "payload": "^3.92.0",
+    "react": "^19.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@payloadcms/next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@payloadcms/db-mongodb": "3.92.1",
+    "@payloadcms/next": "3.92.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "graphql": "^16.14.2",
+    "jsdom": "^31.0.0",
+    "mongodb-memory-server": "^11.3.0",
+    "next": "16.3.3",
+    "payload": "3.92.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
