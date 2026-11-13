@@ -169,7 +169,7 @@ describe('the public server functions', () => {
   })
 })
 
-// The Site lead, 2026-11-11: the site's public pages read these, so a signed-out visitor must be able to read each and
+// The site's team, 2026-11-11: the site's public pages read these, so a signed-out visitor must be able to read each and
 // filter on it. Everything else stays with the site's curators and editors.
 describe('the fields the site’s pages read', () => {
   const CREATOR_READS = ['name', 'slug', 'bio', 'avatar', 'website', 'channels', 'shows', 'showsDisplay', 'videosDefault']

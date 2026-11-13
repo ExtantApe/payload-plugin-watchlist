@@ -51,12 +51,12 @@ browser, on a phone, or with a screen reader; and the `/rsc` entry outside a bun
 | Unlisted, asked-out, another site's, hidden, gone and picked-pending all answer the same `notFound` as missing | `pages` |
 | Only the named filters, checked: a bad kind, topic, slug or video ID is refused; an extra `where` is ignored; topic pages show only automatic and approved videos | `pages` |
 | Plain JSON or `{ error: { code, message } }`, with only the public fields, and no detail of a failure | `pages` |
-| The fields the site's pages read (Site lead, 2026-11-11) are readable and filterable by a visitor and a member, `videosDefault` and `creator.videosDefault` included; the internal ones still aren't, in `and`/`or`, sorts and through `creator.` | `pages`: the fields the site's pages read; `security`: B1 |
+| The fields the site's pages read (the site's team, 2026-11-11) are readable and filterable by a visitor and a member, `videosDefault` and `creator.videosDefault` included; the internal ones still aren't, in `and`/`or`, sorts and through `creator.` | `pages`: the fields the site's pages read; `security`: B1 |
 | The pages: one `main` and `h1`, lists, `<time>`, named navs, 44-pixel links, kinds in words, the site's shell, empty state and topic filter, a plain message for a refusal | `client/pages` |
 | No iframe until the play button; nothing in web storage or cookies | `client/pages`, `client/player`, `client/admin` |
 
 **Gaps skipped (and why):** the admin view inside Payload's admin and `@payloadcms/next`'s template (needs a running
-Next.js app: for the Site lead on test at the switch); real focus order and screen-reader speech (jsdom can't; the
+Next.js app: for the site's team on test at the switch); real focus order and screen-reader speech (jsdom can't; the
 markup, names and focus moves are tested); responsive layout (inline CSS grid, checked only as a style string);
 Payload's own CSRF and cookie handling on the two routes.
 
@@ -138,7 +138,7 @@ feeds. The global `fetch` throws in every test (`test/setup.ts`), so nothing rea
 **Mutation check:** see the section below.
 
 **Gaps skipped (and why):** Payload's own field validation, the Mongo adapter and React's rendering (covered by
-their own projects); the feed's real format and YouTube's real answers (only checkable against YouTube, by the Site lead
+their own projects); the feed's real format and YouTube's real answers (only checkable against YouTube, by the site's team
 on test at the switch); podcasts and shows, the review view and the Sync now endpoint (not built yet).
 
 **Mutation check (2026-11-11, `scripts/mutate.py`):** 44 guards broken one at a time, each file restored exactly

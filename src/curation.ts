@@ -94,7 +94,7 @@ export async function reviewQueueCount(payload: Payload, args: { req: PayloadReq
 export type DigestReport = { site: SiteId | null; waiting: number; sent: 'daily' | 'urgent' | null; failed?: true }[]
 
 /**
- * The curators' digest (Site lead, 2026-11-11): one a day per site when videos wait (nothing when the queue is empty),
+ * The curators' digest (the site's team, 2026-11-11): one a day per site when videos wait (nothing when the queue is empty),
  * and one at once when more than `curation.urgentAt` (25) wait. Each goes at most once a day, and the daily one stands
  * down when the urgent one already went that day. Sent through `notify` only when outside calls are allowed; without
  * `notify`, the admin's queue count is all there is. A send that fails gives its claim back, so the next run tries again.

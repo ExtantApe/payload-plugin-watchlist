@@ -25,7 +25,7 @@ export function curatorFields(o: ResolvedOptions): string[] {
 /**
  * Fields the public never reads, filters or sorts on: only an admin and the record's own site's curators and editors.
  * Everything else on a creator or a video is public (listed in the README). `videosDefault` is public since 2026-11-11
- * (Site lead): the site's visibility rules read it and filter on it.
+ * (the site's team): the site's visibility rules read it and filter on it.
  */
 export const INTERNAL_CREATOR_FIELDS = ['doNotFeature', 'doNotFeatureNote', 'syncDays', 'syncHour', 'lastSyncedAt', 'lastRecheckAt', 'lastFullSyncAt', 'syncingSince', 'syncNote']
 /** Inside `channels`: the rules and the sync's state. `handle`, `title`, `channelId` and `playlists` (the site's pages read the old "own filter" names there) are public. */

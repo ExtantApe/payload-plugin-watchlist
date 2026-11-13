@@ -1,6 +1,6 @@
 # First public push audit
 
-Prepared with phase 2 and run again on 2026-11-11 after the security read's changes, for the Plugins Lead's review before the repo's first push (the owner agreed on 2026-11-11 to make it public at its first release). The first push is one fresh commit of the final tree, version 0.1.0, with `"private"` removed.
+Prepared with phase 2 and run again on 2026-11-11 after the security read's changes, for the maintainers' review before the repo's first push (the owner agreed on 2026-11-11 to make it public at its first release). The first push is one fresh commit of the final tree, version 0.1.0, with `"private"` removed.
 
 | Check | Result |
 | --- | --- |
@@ -13,7 +13,7 @@ Prepared with phase 2 and run again on 2026-11-11 after the security read's chan
 | Player or visitor data | none. Tests use made-up people, sites, channels, videos and topics |
 | Build output, `node_modules`, `.env`, `.secrets/` | never committed; `dist/` and `node_modules/` are ignored |
 | Leak check in CI | yes, `.github/workflows/leak-check.yml`, on every push and pull request |
-| LICENSE | MIT, "Copyright (c) 2026 Captive Origins" |
+| LICENSE | MIT, Copyright (c) 2026 EXTANT APE |
 | The private site's details | none in the tree: no file paths, branch names, commit ids, env names or function names of the site, and nothing about its API. Checked with a list of those names against every tracked file |
 | Keywords | base words, `media`, `integrations`, `multi-tenant`, then function words; no family tags |
 
@@ -26,6 +26,6 @@ Prepared with phase 2 and run again on 2026-11-11 after the security read's chan
 ## For the reviewer to decide before the push
 
 - **History.** The removed text and the two removed files were in earlier local commits. Those were never pushed: the public history starts from one fresh commit of the final tree.
-- **The starter kit's files.** `CLAUDE.md` names the private ops process and paths under the owner's home folder, and `.github/workflows/release.yml` and `RELEASING.md` name the platform repo's `packages:sync` script. Every plugin made from the starter kit carries the same files, public ones included, so they were left as they are.
+- **The starter kit's files.** `CLAUDE.md` names the owner's private working process, and `.github/workflows/release.yml` and `RELEASING.md` name the platform repo's `packages:sync` script. Every plugin made from the starter kit carries the same files, public ones included, so they were left as they are.
 - **Field names.** The topic fields default to `species`, `speciesState`, `speciesNames`, `speciesMode` and `speciesTitles`, and the tests use `tenant` and `taxa`. These are the plugin's own defaults and test names now, so they stay.
-- **Roles in the docs.** "Site lead" and "Plugins Lead" appear in the decisions as who answered. No person is named.
+- **Roles in the docs.** The decisions name who answered by role only (the site's team, the maintainers). No person is named.

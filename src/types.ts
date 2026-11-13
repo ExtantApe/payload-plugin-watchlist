@@ -108,7 +108,7 @@ export type WatchlistOptions = {
   defaults?: { videosDefault?: 'rules' | 'picked' }
   curation?: {
     level?: CurationLevel
-    /** Videos waiting past this many send the digest at once. Default 25 (Site lead, 2026-11-11). */
+    /** Videos waiting past this many send the digest at once. Default 25 (the site's team, 2026-11-11). */
     urgentAt?: number
   }
   goneVideos?: { mode?: GoneVideos; clearAfterDays?: number }
