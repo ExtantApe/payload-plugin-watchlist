@@ -162,7 +162,7 @@ export default async function Page({ searchParams }) {
 
 ## On its own, and with others
 
-Watchlist imports no other Captive Origins plugin and needs none. It works with only Payload and MongoDB.
+Watchlist imports no other plugin and needs none. It works with only Payload and MongoDB.
 
 Things it can work with, all optional and wired by the site:
 - **Notifications:** pass its send function as `notify`, so curators get the digest and editors hear when a sync stops.

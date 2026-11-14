@@ -10,7 +10,7 @@ Dated decisions for this repo, newest last.
   - **7a:** the curator's yes is set per creator. `curation.level` defaults to `creator`; `channel` exists as an option.
   - **8a:** delete stored details of videos YouTube reports gone, keeping only the site's own notes, if YouTube's terms call for it. Behind `goneVideos.mode`. The terms haven't been read yet (design 0001, "Publishers' terms"), so the default stays `keep`; `clear` empties the title, description, thumbnail, duration and playlists of a video gone 30 days, keeping its YouTube ID, the curator's choice and its topic links.
   - **9a:** only titles and descriptions (with the channel's public name) go to the classifier hook. `classifyDescriptionChars` (default 700, 0 for titles only). Without a `classify` hook nothing shows by the rules.
-  - **10:** MIT, public at first release, through the audited first push with the leak check in CI. `LICENSE` added: "Copyright (c) 2026 Captive Origins".
+  - **10:** MIT, public at first release, through the audited first push with the leak check in CI. `LICENSE` added, now "Copyright (c) 2026 EXTANT APE".
 - 2026-11-11: phase 1 built on fakes (the core: collections, access, RSS and Data API fetching, the unit ledger, the sync, curation, the player). Choices made in the build:
   - The public read checks the creator through the database (`creator.listed`, `creator.doNotFeature`, `creator.videosDefault`), so unlisting, do-not-feature and a mode change take effect at once. Each video also stores its `curation`, re-set in the same transaction when its creator's mode changes.
   - `shown` is recomputed on every write, the sync's included: a choice wins; otherwise only `curation: rules`, `passedRules` and details from the API. Gone videos never show.
