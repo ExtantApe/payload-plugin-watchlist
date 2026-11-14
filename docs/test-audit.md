@@ -1,6 +1,6 @@
 # Test audit
 
-Kept by this repo's owning session. Newest first.
+Newest first.
 
 ## 2026-11-11: before the first public push (after the security read of f81e50a)
 
