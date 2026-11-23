@@ -171,7 +171,7 @@ export function getCreator(req: PayloadRequest, input: { slug?: unknown; page?: 
   return serve(req, async (o) => {
     if (typeof input?.slug !== 'string' || !input.slug || input.slug.length > 120) throw new PageError('notFound')
     const visitor = visitorOf(req)
-    const { docs } = await orNothing(visitor.payload.find({ collection: o.collections.creators, where: { slug: { equals: input.slug } }, limit: 1, depth: 0, overrideAccess: false, req: visitor, select: CREATOR_SELECT as never }))
+    const { docs } = await orNothing(visitor.payload.find({ pagination: false, collection: o.collections.creators, where: { slug: { equals: input.slug } }, limit: 1, depth: 0, overrideAccess: false, req: visitor, select: CREATOR_SELECT as never }))
     const creator = docs[0] as unknown as Doc | undefined
     if (!creator) throw new PageError('notFound')
     const list = await videosWhere(o, visitor, [{ creator: { equals: idOf(creator.id) } }], input)
@@ -185,6 +185,7 @@ export function getVideo(req: PayloadRequest, input: { youtubeId?: unknown }): P
     if (!isVideoId(input?.youtubeId)) throw new PageError('notFound')
     const visitor = visitorOf(req)
     const { docs } = await orNothing(visitor.payload.find({
+      pagination: false,
       collection: o.collections.videos,
       where: { youtubeId: { equals: input.youtubeId } },
       limit: 1,
