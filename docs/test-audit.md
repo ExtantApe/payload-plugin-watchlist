@@ -2,6 +2,54 @@
 
 Newest first.
 
+## 2026-11-26: sweep after the transaction fix and 0.1.0
+
+The only source change since the last entry is c924087 (`getCreator` and `getVideo` stop paginating their lookups). The
+rest of this sweep maps what the README and `docs/decisions.md` promise at 0.1.0 to the tests that prove it. Still on
+fakes only, as before. Test names are shortened where they're long.
+
+- **Promises** (README and `docs/decisions.md`):
+  - Transactions: a find that carries a request, and so can run inside its transaction, sends no count, unless it pages for a person.
+  - Access: only an exact `true` passes; the public, curator, editor and admin rows of the README's table; a record never moves or points across sites; `shown` can't be set around the rules; overrides only narrow.
+  - What the public can read: the listed fields only, with filters and sorts on the others refused, in `and`/`or` and through `creator.`.
+  - Public pages: read as a signed-out visitor whoever is signed in; hidden, unlisted and missing all answer `notFound`; only the named filters; plain JSON with no detail of a failure; nothing kept in the browser.
+  - The sync: the rules in order, `picked` by default, RSS first, feed-only without a key, the daily cap and a site's share, the quota stop, retries, the re-check, the run lock, the cron.
+  - The key and outside calls: the key is never read from env and never appears in a note or error; `enabled` anything but `true` means no outside call.
+  - Curation: one curator decides (the atomic claim), people never write the claim, the review queue and its count, the digest.
+  - Sync now: who may run it, the refusals, the 409 and the 429.
+  - Gone videos: `keep` does nothing; `clear` clears only on YouTube's fresh answer.
+  - The player: no iframe before the click, youtube-nocookie only, a link out when embedding is off.
+- **Covered:**
+  - Transactions, the fix: `transactions.test.ts`: "a creator's page: the lookup by slug sends no count; only the list that pages for the visitor does" and "a video's page: its one find sends no count".
+  - Exact `true`: `units.test.ts`: "exactlyTrue refuses ...", "isAdmin answering ... grants nothing", "sitesFor answering ... is no role", "ofRequest answering ... means no public reads"; `staff.test.ts`: "a provider that answers anything but what's asked is a no".
+  - The access table: `access.test.ts`: all of "reading" and "changing", including "a signed-out visitor with no site sees nothing", "a curator can't change anything but the review fields, can't touch another site, and can't manage creators", "staff manage creators and videos of their own site only, and can't move a record to another site" and "the unit ledger is for editors and admins only".
+  - Across sites: `security.test.ts`: "refuses a site-A video pointing at a site-B creator, for staff and for a system write" and "a stored cross-site video never shows publicly, and a mode change re-judges only the creator's own site".
+  - `shown` and fail closed on stored records: `access.test.ts`: "Shown can't be set around the rules, even by a system write", "records changed outside Payload's hooks still fail closed", "unlisting a creator or marking do-not-feature hides their videos at once".
+  - Overrides: `units.test.ts`: "a removed field or a changed type is refused", "access is only narrowed, and the plugin's hooks run first", "the plugin's routes stay, and stay first".
+  - What the public can read: `security.test.ts`: all of "B1: internal fields"; `pages.test.ts`: all of "the fields the site's pages read"; `units.test.ts`: "the query guard on its own" and "internal field access on its own".
+  - Public pages: `pages.test.ts`: "the video grid: only what the public may see, newest first, the same for staff and admins as for a visitor", "another site sees only its own; no site sees nothing", "a creator's page: unlisted, asked out, another site's and missing all get the same answer", "a video's page: hidden, gone, picked-pending, unlisted and missing all get the same answer", "the kind and topic filters, and pages", "a stored website that isn't an http or https link never reaches a page", "a failure is answered in plain words, with no details"; `client/pages.test.tsx`: "nothing is kept in the browser".
+  - The sync: `sync.test.ts`: "the rules, through a first sync", "RSS first", "quota", "re-check, gone videos and locks", "the cron"; `units.test.ts`: "the rules", "the feed parser", "the schedule"; `topics.test.ts`.
+  - The key and outside calls: `sync.test.ts`: "never reads the key from the environment", "the key never appears in a note, a report or an error", "`enabled` answering ... means no outside call at all, RSS included", "`enabled` throwing is a no"; `units.test.ts`: "errors carry YouTube's message without the key or the URL"; `curation.test.ts`: "a sync problem is told to the site, without the key".
+  - Curation: `curation.test.ts`: "two curators at once: exactly one decides", "a member, a signed-out visitor and another site's curator can't decide, and leave no claim"; `security.test.ts`: all of "S2: a claim holds against plain edits"; `staff.test.ts`: all of "the review queue" and "the daily digest"; `units.test.ts`: "a signed-out request holds no queue".
+  - Sync now: `staff.test.ts`: all of "Sync now", including "refuses a signed-out visitor, a member, a curator and another site's editor, and starts nothing", "two clicks at once run one sync" and "a creator rests after any sync".
+  - Gone videos: `staff.test.ts`: all of "the gone-videos sweep", including "clears nothing without YouTube's answer: no key, outside calls off, or the cap reached"; `sync.test.ts`: "goneVideos "clear" keeps only the site's own notes after the grace period".
+  - The player: `client/player.test.tsx`; `client/pages.test.tsx`: "the title as the h1 and the click-to-play player".
+- **Gaps added** (`test/transactions.test.ts`, 7 tests, on a made-up Payload whose `find` writes down its arguments, with no database):
+  - The fix had no test. The two tests named above failed on the source before c924087 ("the creators find must pass pagination: false: expected undefined to be false", and the same for videos; 2 failed, 5 passed) and pass on the fix (7 passed).
+  - "the creator list sends no count; the video grid is the only read that pages": pins `listCreators`, and names the paged lists as the exception the fix left alone.
+  - "a new creator is put in its place by name with one find, and no count" and "a creator's mode change re-judges its videos with one find, and no count, in the same transaction": the two hook finds that always run inside a write's transaction. They were right already and nothing held them there. With `pagination: false` taken out of both in the lane, both tests failed; restored, they pass.
+  - "a change that leaves the mode alone reads nothing".
+  - "every public find is made with the request, as a signed-out visitor, with access checked": the arguments themselves (`user: null`, `overrideAccess: false`) on all five public finds. The page tests prove the outcome; this is small and reads the cause.
+- **Gaps skipped (and why):**
+  - The race itself (NoSuchTransaction): it needs the find and its count to collide on a real replica set, about 1 run in 7 where it was found. A test that fails by luck is worse than none, so the test reads the arguments.
+  - The paged lists inside a transaction (`listVideos`, a creator's videos in `getCreator`, `reviewQueue`): they need the count for their totals and the fix left them as they are, on the grounds that they run outside any transaction. Nothing in the code holds a caller to that, so it's on the lead's list as a question.
+  - A source scan for new paginated finds with a request: the shared lint is meant to catch those across the plugins.
+  - Payload's own transaction handling, the Mongo adapter and its count query: framework internals, covered by their own projects.
+  - The mutation check wasn't rerun: one source file changed since the last run and its two guards were broken by hand above. The three known second-wall survivors stand as recorded.
+  - Unchanged from earlier entries: the admin view in a real Payload admin, real browsers and screen readers, YouTube's real answers, and the parity snapshot (2 tests skipped without it).
+
+291 tests in all: 289 run without the parity snapshot, and 2 are skipped. `npm run typecheck` and `npm test` both pass.
+
 ## 2026-11-11: before the first public push (after the security read of f81e50a)
 
 | Promise | Tests |

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Tests for the transaction fix (`test/transactions.test.ts`): the creator and video lookups, the creator list and the two hooks that read inside a write pass `pagination: false`, and every public find is made as a signed-out visitor with access checked. Tested: typecheck and the full suite (289 run, 2 skipped without the parity snapshot); the two tests for the fix failed on the source before it. Not tested: the race itself, which needs a real replica set and luck, and the paged lists inside a transaction.
+
 ## 0.1.0 (2026-11-11)
 
 Phases 1 and 2, on fakes. Not on npm; no site uses it.
