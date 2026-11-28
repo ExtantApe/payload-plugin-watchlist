@@ -4,26 +4,40 @@
 
 ## The first version under this name, 0.3.0
 
-npm can only trust a workflow for a package that exists, so the owner publishes this one by hand. Build and test first:
+The rename has these one-time steps, in this order.
 
-```sh
-npm ci
-npm run typecheck
-npm test
-npm run build
-```
+1. Rename the GitHub repo to `ExtantApe/payload-plugin-playlists`. `repository`, `homepage` and `bugs` in `package.json` already point there, and trusted publishing needs it.
 
-Then publish, on its own line:
+   ```sh
+   gh repo rename payload-plugin-playlists --repo ExtantApe/payload-plugin-watchlist
+   ```
 
-```sh
-npm publish --ignore-scripts --access public
-```
+2. npm can only trust a workflow for a package that exists, so the owner publishes this version by hand. Build and test first:
 
-Then set up trusted publishing:
+   ```sh
+   npm ci
+   npm run typecheck
+   npm test
+   npm run build
+   ```
 
-```sh
-npm trust github @extantape/payload-plugin-playlists --repo ExtantApe/payload-plugin-playlists --file release.yml --allow-stage-publish --yes
-```
+   Then publish, on its own line:
+
+   ```sh
+   npm publish --ignore-scripts --access public
+   ```
+
+3. Set up trusted publishing for the new name:
+
+   ```sh
+   npm trust github @extantape/payload-plugin-playlists --repo ExtantApe/payload-plugin-playlists --file release.yml --allow-stage-publish --yes
+   ```
+
+4. The owner deprecates the old package with a pointer to the new one:
+
+   ```sh
+   npm deprecate @extantape/payload-plugin-watchlist "Renamed to @extantape/payload-plugin-playlists"
+   ```
 
 Pushing the tag `v0.3.0` afterwards makes one Release run fail at the stage step, because that version already exists. Leave it.
 

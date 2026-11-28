@@ -33,12 +33,14 @@ Only an exact `true` passes. A provider that answers `1`, `'true'`, `{}`, a prom
 
 "Shown" is recomputed on every write, the sync's included, so it can't be set around the rules through the API. A site's `overrides` can add fields, hooks and narrower access, but can't remove the plugin's fields, hooks or access, or turn duplicating on. The site's own hooks run after the plugin's, including after the one that computes `shown`, so site code can still set `shown` itself: keep that out of your hooks unless you mean it.
 
-**Some fields belong to the sync and the review.** A write with a person on the request, an admin's included, never sets them, on a new record or an existing one:
+**Some fields belong to the sync and the review.** A write with a person on the request, an admin's included, never sets them, on a new record or an existing one, unless server code passes the plugin's `SYNC_CONTEXT` (below):
 
 - **Videos:** `claim`, `hiddenReason`, `ruleKey`, `passedRules`, `source`, `curation`, `channelId`, `unavailable`, `unavailableSince`, `embeddable`, `madeForKids` and, with `topics`, the topic names.
 - **Creators:** `lastSyncedAt`, `lastRecheckAt`, `lastFullSyncAt`, `syncingSince` and `syncNote`, and on each channel `uploads`, `backfillToken`, `backfillDone` and `rssSeen`.
 
 The plugin drops a sent value without an error and keeps what's stored, because the admin sends the whole record back on save. On a new video `unavailable` starts off, so a video a person adds by hand shows only through a person's choice (**Always show**, or **Shown** ticked). The sync, the review and server code that writes with no person on the request set these fields. `doNotFeature` and its note are still for editors and admins to write.
+
+**`SYNC_CONTEXT` marks a write as the sync's own.** When server code passes `context: { [SYNC_CONTEXT]: true }`, the plugin treats the write that way even with a person on the request. The write can set the fields above, and the plugin skips its other checks for a person's write: the site and curator limits, locking an edited video against the sync, keeping the choice and **Shown** in step, and the review claim. It doesn't call `revalidate` for that write either. Access control is unchanged by it. Pass it only from trusted server code, and never build a `context` from request input.
 
 When a person points a channel row at a different channel, the row's sync state starts over, so the next sync looks the channel up and reads its uploads from the start. A handle edit that resolves to the same channel keeps its state.
 
@@ -108,7 +110,7 @@ This package was `@extantape/payload-plugin-watchlist`. No old names are kept, s
 5. The review page is now `/playlists-review` under the admin route. To keep the old address, set `admin: { reviewPath: '/watchlist-review' }`.
 6. Run `payload generate:importmap` and `payload generate:types`.
 7. Rename any CSS or tests that use `data-watchlist-*` or the review queue's `watchlist-review-*` ids, which are now `data-playlists-*` and `playlists-review-*`. If you take the new usage slug, rename the GraphQL type `WatchlistUsage` to `PlaylistsUsage` too.
-8. Read the options from `config.custom.playlists`, and import `SYNC_CONTEXT` instead of writing its value out.
+8. Read the options from `config.custom.playlists`. Where your code passes the sync's context key, import `SYNC_CONTEXT` instead of writing its value out. It marks a write as the sync's own, so pass it only from trusted server code, and never build a `context` from request input.
 9. The admin group is now "Playlists". To keep the old one, set `labels: { group: 'Watchlist' }`.
 
 ## Options
