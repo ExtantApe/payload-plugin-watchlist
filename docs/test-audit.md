@@ -2,6 +2,27 @@
 
 Newest first.
 
+## 2026-11-28: after checking the shape of write data
+
+- **Promises:** a create or update on `creators`, `videos` or `watchlist-usage` is refused with a 400 when its data has a key that starts with `$` or contains a dot (json and rich text field contents excepted), or when one list has two rows with the same id, for every write, server code included; a list field takes a list, `null`, `0` or `'0'`, and anything else gets the same refusal; a refused write changes nothing; a channel row pointed at a different channel starts its sync over, and a row that resolves to the same channel keeps its state.
+- **Added** (`test/writeShape.test.ts`, 36 tests): refusals over REST and the Local API with and without a person, the same answer for an id no record has, nothing changed or created, bulk updates, rows and the top level, the unit ledger, repeated row ids, data added by hooks that come after Watchlist's, a json field, GraphQL create and update, a moved channel row through the API and a whole-record save, the same channel under another link, reordered rows, and a draft save and restore. Also list fields sent as something else (an object, text, false) as staff over REST PATCH and POST, through the Local API with access checked for update and create, and with no person; 0 and '0' saved as an empty list at the top level and inside a row, over REST PATCH and POST; stored sync state kept when a row carries '0'; and null still clearing a list.
+- **Added** (`test/shapeWalk.test.ts`, 11 tests): the check called directly over groups, tabs, layout fields, inline and referenced blocks, localized fields, fields it doesn't walk, row ids and data that isn't an object.
+- **Covered** (`test/personWrites.test.ts`): the same refusal and message for data outside the fields' shape, at each of three ways in, with the record unchanged on update.
+- **Mutations:** the nine new `scripts/mutate.py` entries were each caught by `test/writeShape.test.ts`, in a copy. The entries for `src/collections.ts`, `src/noCopy.ts` and `src/plugin.ts` were rerun: 23 of 25 caught. The other two are older entries that need a look: one no longer finds its line, and one survives its tests. Entries for other files weren't rerun.
+- **Not tested:** the SQL adapters, the admin in a browser, GraphQL through its HTTP route, and other Payload versions.
+
+## 2026-11-27: after keeping the sync's and the review's fields to themselves
+
+- **Promises:** a write with a person on the request never sets the fields the README lists as the sync's and the review's, on create or update; the stored values stay; the settings and notes people write are still theirs; the sync, the review, the sweep and server writes still set everything; the plugin's own writes don't change how the caller's later writes are treated.
+- **Covered** (`test/personWrites.test.ts`): creates and updates of both collections by staff and an admin over REST, the Local API and the Local API with access overridden; each listed field, on the creator and on existing and new channel rows; the do-not-feature note and the other people settings kept; a whole record saved back; a curator still refused; a curator's claim on a video a person created; one REST request over several creators; later writes on the same request after a re-judging change, a sync and a sweep; server writes with no person and a person-started sync.
+- **Gaps skipped:** GraphQL (it runs the same collection hooks), the admin in a browser, the SQL adapters. A site's own hooks are site code and aren't tested here. No new `scripts/mutate.py` entries, and the older ones weren't rerun.
+
+## 2026-11-27: after turning duplicating off
+
+- **Promises:** none of the three collections can be duplicated by anyone, server code included, through any of Payload's ways in; the answer doesn't depend on the id; the site's config can't turn it back on; ordinary creates work as before.
+- **Covered** (`test/duplicate.test.ts`): the flag on all three; `payload.duplicate` and `create` with `duplicateFromID` (real, unknown, malformed and empty ids) for a visitor, a member, a curator, editors of both sites, an admin and server code, with record counts unchanged; no REST route and no GraphQL mutation; with a later plugin and every override turning the flag off, the startup rule, the host's `onInit`, a later hook that sets `duplicateFromID`, and Local, REST and GraphQL with the flag off while running; editor and server creates still work; a direct create of each collection is refused for people without the role on that site.
+- **Gaps skipped:** GraphQL over its HTTP route (the harness has none; the resolvers are run from the built schema), the admin in a browser and the SQL adapters. The older mutation entries weren't rerun; the four new ones were each caught, in a copy of the repo.
+
 ## 2026-11-26: sweep after the transaction fix and 0.1.0
 
 The only source change since the last entry is c924087 (`getCreator` and `getVideo` stop paginating their lookups). The

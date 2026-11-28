@@ -1,7 +1,7 @@
 import { createLocalReq, type Payload, type PayloadRequest } from 'payload'
 
 import { idOf } from './access.js'
-import { syncContext } from './collections.js'
+import { ownContext, syncContext } from './collections.js'
 import { contextFor, GONE_TITLE, optionsOf } from './sync.js'
 import type { SiteId } from './types.js'
 import { COST, dataApi, YouTubeError } from './youtube.js'
@@ -53,7 +53,7 @@ export async function sweepGoneVideos(payload: Payload, opts: { now?: Date; limi
     select: { youtubeId: true, locked: true, ...(o.scope.field ? { [o.scope.field]: true } : {}) } as never,
   })
   const all = docs as unknown as ({ id: string; youtubeId: string; locked?: boolean | null } & Record<string, unknown>)[]
-  const update = (id: string, data: Record<string, unknown>) => payload.update({ collection: o.collections.videos, id, data: data as never, overrideAccess: true, depth: 0, context: syncContext, req })
+  const update = (id: string, data: Record<string, unknown>) => payload.update({ collection: o.collections.videos, id, data: data as never, overrideAccess: true, depth: 0, context: syncContext, req: ownContext(req) })
   // One site's videos per call, so each site's units are counted to it.
   const siteOfDoc = (v: Record<string, unknown>): SiteId | null => (o.scope.field ? (idOf(v[o.scope.field]) as SiteId | null) : null)
   const bySite = new Map<SiteId | null, typeof all>()

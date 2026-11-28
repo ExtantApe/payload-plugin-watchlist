@@ -1,6 +1,6 @@
 {
   "name": "@extantape/payload-plugin-watchlist",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Watchlist for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.",
   "homepage": "https://github.com/ExtantApe/payload-plugin-watchlist#readme",
   "bugs": {
@@ -84,6 +84,7 @@
   },
   "devDependencies": {
     "@payloadcms/db-mongodb": "3.92.1",
+    "@payloadcms/graphql": "3.92.1",
     "@payloadcms/next": "3.92.1",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^24.0.0",

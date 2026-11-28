@@ -2,7 +2,7 @@ import type { Access, CollectionConfig, Field } from 'payload'
 
 /**
  * A site's override can add fields, admin settings, hooks and narrower access. It can't remove the plugin's rules:
- * its fields (same type and target), their access and hooks, the collection's hooks (the plugin's run first), its
+ * duplicating stays off, and its fields (same type and target), their access and hooks, the collection's hooks (the plugin's run first), its
  * access (only narrowed, both must allow), its indexes and its endpoints (first, so they can't be shadowed) are put back
  * from an untouched build.
  */
@@ -102,5 +102,5 @@ export function protect(base: CollectionConfig, out: CollectionConfig, seen: Set
   // The plugin's endpoints stay, and come first, so an override's route on the same path can't take their place.
   const mine = Array.isArray(base.endpoints) ? base.endpoints : []
   const endpoints = [...mine, ...(Array.isArray(out.endpoints) ? out.endpoints.filter((e) => !mine.includes(e)) : [])]
-  return { ...out, hooks: hooks as CollectionConfig['hooks'], access: access as CollectionConfig['access'], indexes, endpoints }
+  return { ...out, disableDuplicate: base.disableDuplicate, hooks: hooks as CollectionConfig['hooks'], access: access as CollectionConfig['access'], indexes, endpoints }
 }

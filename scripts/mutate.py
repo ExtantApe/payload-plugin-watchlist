@@ -2,7 +2,7 @@ import hashlib, subprocess, sys, os
 # The mutation check: breaks each guard in turn (a string replace), runs the tests that should catch it, and puts the
 # file back exactly (checked by hash). "killed" means a test failed, as it should. Usage: python3 scripts/mutate.py [name or prefix such as B1 ...]. Run it in a copy of the repo, never the live tree.
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-A='test/access.test.ts'; S='test/sync.test.ts'; U='test/units.test.ts'; C='test/curation.test.ts'; P='test/client/player.test.tsx'; X='test/security.test.ts'; T='test/staff.test.ts'; G='test/pages.test.ts'; AD='test/client/admin.test.tsx'; PG='test/client/pages.test.tsx'
+A='test/access.test.ts'; S='test/sync.test.ts'; U='test/units.test.ts'; C='test/curation.test.ts'; P='test/client/player.test.tsx'; X='test/security.test.ts'; D='test/duplicate.test.ts'; T='test/staff.test.ts'; G='test/pages.test.ts'; AD='test/client/admin.test.tsx'; PG='test/client/pages.test.tsx'; W='test/writeShape.test.ts'
 M=[
  ('exactlyTrue only true','src/access.ts',"return (await check()) === true","return Boolean(await check())",[U,A]),
  ('sitesFor non-array is none','src/access.ts',"return Array.isArray(list) ? list.filter(isSite) : []","return Array.isArray(list) ? list.filter(isSite) : (list as never)",[U]),
@@ -135,6 +135,20 @@ M=[
  ('phase 3: pages: a stored website must be http(s)','src/server/public.ts',"return u.protocol === 'https:' || u.protocol === 'http:' ? u.toString() : null\n  } catch {\n    return null\n  }\n}\n\nfunction creatorCard","return u.toString()\n  } catch {\n    return null\n  }\n}\n\nfunction creatorCard",[G]),
  ('phase 3: options: the cooldown is checked','src/plugin.ts',"  if (!(Number.isInteger(cooldown) && cooldown >= 0)) fail(","  if (false) fail(",[U]),
  ('phase 3: options: the site share is checked','src/plugin.ts',"  if (siteCap !== null && !(Number.isInteger(siteCap) && siteCap > 0 && siteCap <= cap)) fail(","  if (false) fail(",[U]),
+ ('no duplicates: refused before the read','src/noCopy.ts',"if (operation === 'create' && from !== undefined && from !== null)","if (false)",[D]),
+ ('no duplicates: refused after later hooks','src/noCopy.ts',".filter((h) => h !== noCopy), noCopy]",".filter((h) => h !== noCopy)]",[D]),
+ ('no duplicates: restored at startup','src/plugin.ts',"keepNoCopy(payload, Object.values(o.collections))","void keepNoCopy",[D]),
+ ('no duplicates: kept through overrides','src/protect.ts',"disableDuplicate: base.disableDuplicate, ","",[D]),
+ # ---- the shape of write data
+ ('write shape: operator keys','src/shape.ts',"if (k.startsWith('$')) refuse()","if (false) refuse()",[W]),
+ ('write shape: dotted keys','src/shape.ts',"if (k.includes('.')) refuse()","if (false) refuse()",[W]),
+ ('write shape: rows are walked','src/shape.ts',"    if (inside) checkLevel(row, inside, blocks)\n","    void inside\n",[W]),
+ ('write shape: a list field takes only a list','src/shape.ts',"if (!Array.isArray(value)) { refuse(); return }","if (!Array.isArray(value)) return",[W]),
+ ('write shape: 0 is an empty list','src/shape.ts'," || value === 0 || value === '0') return",") return",[W]),
+ ('write shape: one row per id','src/shape.ts',"if (ids.has(id)) refuse()","if (false) refuse()",[W]),
+ ('write shape: placed again at startup','src/plugin.ts',"keepShape(payload, Object.values(o.collections))","void keepShape",[W]),
+ ('write shape: a moved row starts over','src/collections.ts',"if (prev && movedChannel(row, prev))","if (false)",[W]),
+ ('write shape: the id follows a new handle','src/collections.ts',"  if (row.handle !== prev.handle && row.channelId === prev.channelId) row.channelId = channelIdOf(row.handle as string) ?? null\n","",[W]),
 ]
 only=sys.argv[1:]
 # MUTATE_SHARD=2/4 runs every fourth guard starting at the second, so several copies of the repo can share the work.
