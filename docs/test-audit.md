@@ -2,6 +2,15 @@
 
 Newest first.
 
+## 2026-11-28: after the rename to Playlists
+
+- **Promises:** the package, factory, types, options key, default usage slug, notice kinds, review view and path, data attributes and context key carry the new name; the old context key gives a write nothing; a site that keeps its ledger with `collections: { usage: 'watchlist-usage' }` keeps today's unit count.
+- **Added** (4 tests): `test/units.test.ts`, the names a site depends on (`config.custom.playlists` and no `config.custom.watchlist`, the `playlists-usage` slug, `SYNC_CONTEXT`, the review view, its path and import map entry); `test/personWrites.test.ts`, a person's Local API create and update carrying `{ watchlistSync: true }`, with access checked and overridden (2 tests); `test/staff.test.ts`, a kept `watchlist-usage` ledger already at the cap, where the sync stops with `cap` and spends 0 units. The last one guards behaviour the `collections` option already had, so it isn't expected to fail on the old code.
+- **Seen to fail:** the old source can't prove much here, because the new names don't import from it. So after the rename was committed, one line at a time was changed and then restored. With `SYNC_CONTEXT` back at `'watchlistSync'`, both old context key tests failed (the person's claim was not taken out of the write) and so did the names test. With the default usage slug back at `watchlist-usage`, the names test failed. With the plugin ignoring a `collections.usage` override, the kept ledger test failed with a TypeError while seeding, because the old slug had no collection. That last check shows only that the test depends on the override; its cap and unit assertions weren't reached.
+- **Tightened:** two checks could have passed without testing anything after a rename. `test/harness.ts` now builds indexes from the plugin's own collection list and fails if one is missing. `test/duplicate.test.ts` now refuses every GraphQL mutation that starts with `duplicate`, apart from those of Payload's own `duplicatePayload…` collections.
+- **Renamed:** the parity snapshot's variable is now `PLAYLISTS_PARITY_SNAPSHOT`. The comparison was skipped.
+- **Mutations:** the old and new strings in `scripts/mutate.py` follow the rename. Dry run only: 141 of 142 entries find their line. "S2: people never write the claim" doesn't, as before the rename, and is left as it was.
+
 ## 2026-11-28: after checking the shape of write data
 
 - **Promises:** a create or update on `creators`, `videos` or `watchlist-usage` is refused with a 400 when its data has a key that starts with `$` or contains a dot (json and rich text field contents excepted), or when one list has two rows with the same id, for every write, server code included; a list field takes a list, `null`, `0` or `'0'`, and anything else gets the same refusal; a refused write changes nothing; a channel row pointed at a different channel starts its sync over, and a row that resolves to the same channel keeps its state.

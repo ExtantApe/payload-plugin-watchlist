@@ -26,7 +26,7 @@ export async function reviewVideo(payload: Payload, args: { req: PayloadRequest;
   const admin = await isAdmin(o, req)
   if (!admin && !holds(o, await curateSites(o, req), o.scope.field ? video[o.scope.field] : null)) throw new Forbidden(req.t)
   const model = (payload.db as unknown as { collections: Record<string, { updateOne: (f: object, u: object) => Promise<{ modifiedCount: number }> }> }).collections[o.collections.videos]
-  if (!model?.updateOne) throw new Error('Watchlist: review claims need MongoDB.')
+  if (!model?.updateOne) throw new Error('Playlists: review claims need MongoDB.')
   const token = `${idOf(req.user)}:${randomUUID()}`
   const free = [{ $or: [{ choice: null }, { choice: { $exists: false } }] }, { $or: [{ claim: null }, { claim: { $exists: false } }] }]
   const won = await model.updateOne({ _id: id, $and: free }, { $set: { claim: token } })
@@ -116,7 +116,7 @@ export async function sendReviewDigest(payload: Payload, opts: { mode: 'daily' |
     const due = opts.mode === 'daily' ? waiting > 0 : waiting > o.urgentAt
     if (due && enabled && o.notify && (await book.claimDigest(site, opts.mode))) {
       try {
-        await o.notify({ kind: 'watchlist.review', site, waiting, urgent: opts.mode === 'urgent' }, { req })
+        await o.notify({ kind: 'playlists.review', site, waiting, urgent: opts.mode === 'urgent' }, { req })
         sent = opts.mode
       } catch {
         failed = true

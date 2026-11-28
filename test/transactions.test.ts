@@ -1,7 +1,7 @@
 import type { CollectionConfig, Config, PayloadRequest } from 'payload'
 import { beforeEach, describe, expect, it } from 'vitest'
 
-import { watchlist } from '../src/index.js'
+import { playlists } from '../src/index.js'
 import { getCreator, getVideo, isError, listCreators, listVideos } from '../src/server/index.js'
 
 // A paginated find makes Payload's Mongo adapter send the find and its count at once on the request's session. When
@@ -16,7 +16,7 @@ type Args = Record<string, unknown> & { collection: string; req?: { transactionI
 const TRANSACTION = 'made-up-transaction'
 const VIDEO_ID = 'madeupvid01'
 
-const config = watchlist({ scope: { field: 'tenant', ofRequest: () => 'A', sitesFor: () => [], isAdmin: () => true }, enabled: () => false })({ collections: [] } as unknown as Config) as Config
+const config = playlists({ scope: { field: 'tenant', ofRequest: () => 'A', sitesFor: () => [], isAdmin: () => true }, enabled: () => false })({ collections: [] } as unknown as Config) as Config
 const creators = config.collections!.find((c) => c.slug === 'creators') as CollectionConfig
 
 const rows: Record<string, Record<string, unknown>[]> = {

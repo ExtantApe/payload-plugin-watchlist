@@ -3,7 +3,7 @@ import type { Payload } from 'payload'
 import type { ResolvedOptions, SiteId } from './types.js'
 
 /**
- * The unit ledger: one `watchlist-usage` record a day (in the zone YouTube's quota resets in), counting the Data API
+ * The unit ledger: one `playlists-usage` record a day (in the zone YouTube's quota resets in), counting the Data API
  * units spent across every site, and whether a quota error stopped the day. Every API call reserves its units first,
  * with one atomic database update that refuses past the cap (and past the site's own share, when one is set), so two
  * runs at once can't go over it together.
@@ -18,7 +18,7 @@ type Native = {
 
 export function nativeOf(payload: Payload, slug: string): Native {
   const c = (payload.db as unknown as { collections?: Record<string, { collection?: Partial<Native> }> }).collections?.[slug]?.collection
-  if (!c?.updateOne || !c.findOne) throw new Error('Watchlist: the unit ledger and review claims need MongoDB. Other database adapters aren’t supported yet.')
+  if (!c?.updateOne || !c.findOne) throw new Error('Playlists: the unit ledger and review claims need MongoDB. Other database adapters aren’t supported yet.')
   return c as Native
 }
 

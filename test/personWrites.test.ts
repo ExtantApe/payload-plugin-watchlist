@@ -230,8 +230,27 @@ describe('one request that makes several writes', () => {
   })
 })
 
+describe('the context key the sync used under the old name', () => {
+  // `watchlistSync` was the plugin's own mark. It means nothing now, so a write that carries it is a person's write.
+  for (const way of ['Local API', 'Local API, access overridden'] as const)
+    it(`${way}: a person's write that carries it gets the same person rules as one without it`, async () => {
+      const options = () => ({ ...as(staff), context: { watchlistSync: true }, ...(way === 'Local API' ? {} : { overrideAccess: true }), depth: 0 })
+      const creator = await serverCreator({ videosDefault: 'rules' })
+      const made = (await payload.create({ collection: 'videos', data: { tenant: 'A', creator: creator.id, youtubeId: videoId(next('ok')), title: 'Made-up with the old key', ...videoState() } as never, ...options() })) as unknown as Doc
+      expectNoVideoState(await stored('videos', made.id))
+      const video = await serverVideo(creator.id)
+      await payload.update({ collection: 'videos', id: String(video.id), data: videoState() as never, ...options() })
+      expectNoVideoState(await stored('videos', video.id))
+      const person = (await payload.create({ collection: 'creators', data: { tenant: 'A', name: next('Made-up old key '), ...CREATOR_STATE, channels: [channel(CHANNEL_STATE)] } as never, ...options() })) as unknown as Doc
+      expectNoCreatorState(await stored('creators', person.id))
+      const server = await serverCreator()
+      await payload.update({ collection: 'creators', id: String(server.id), data: CREATOR_STATE as never, ...options() })
+      expectNoCreatorState(await stored('creators', server.id))
+    })
+})
+
 describe('write data outside the shape of the fields', () => {
-  const BAD_SHAPE = 'Watchlist couldn’t save this: the data isn’t in the shape of the collection’s fields.'
+  const BAD_SHAPE = 'Playlists couldn’t save this: the data isn’t in the shape of the collection’s fields.'
   const dottedVideo = { 'claim.x': 'made-up', 'hiddenReason.x': 'made-up', 'passedRules.x': true }
   const dottedCreator = { 'syncNote.x': 'made-up', 'syncingSince.x': FAR }
   const dottedRow = { 'channels.0.rssSeen': videoId('dot'), 'channels.0.uploads': 'UUdotted' }

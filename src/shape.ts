@@ -3,7 +3,7 @@ import { APIError, type CollectionBeforeChangeHook, type CollectionBeforeOperati
 import { topLevelFields } from './protect.js'
 
 /** The one answer for every refusal. It never repeats a key or a value from the write. */
-export const BAD_SHAPE = 'Watchlist couldn’t save this: the data isn’t in the shape of the collection’s fields.'
+export const BAD_SHAPE = 'Playlists couldn’t save this: the data isn’t in the shape of the collection’s fields.'
 
 type Obj = Record<string, unknown>
 type BlockLike = { slug: string; fields: Field[] }

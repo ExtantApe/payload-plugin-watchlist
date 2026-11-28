@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { buildConfig, type Config, type Field } from 'payload'
 import { describe, expect, it } from 'vitest'
 
-import { watchlist } from '../src/index.js'
+import { playlists } from '../src/index.js'
 import { scope } from './harness.js'
 
 // Field parity, for a site that had this feature built in before the plugin: the plugin's collections, configured as
@@ -10,7 +10,7 @@ import { scope } from './harness.js'
 // indexes, so switching needs no database migration.
 //
 // The snapshot of that site's fields isn't in this repo: it describes a private codebase. Point
-// WATCHLIST_PARITY_SNAPSHOT at a JSON file to run the comparison; without it the comparison is skipped, and says so.
+// PLAYLISTS_PARITY_SNAPSHOT at a JSON file to run the comparison; without it the comparison is skipped, and says so.
 // The file holds, per collection, `{ fields: { name: type }, uniqueIndexes: [[field, …]] }`, plus `scopeField`, the
 // `topics` option (without `resolve`), and `siteOwn`: the fields the site adds itself through `overrides`.
 type Snapshot = {
@@ -19,7 +19,7 @@ type Snapshot = {
   siteOwn?: Record<'creators' | 'videos', Record<string, string>>
 } & Record<'creators' | 'videos', { fields: Record<string, string>; uniqueIndexes: string[][] }>
 
-const path = process.env.WATCHLIST_PARITY_SNAPSHOT
+const path = process.env.PLAYLISTS_PARITY_SNAPSHOT
 const snapshot = path && existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as Snapshot) : null
 
 /** New in the plugin: additive and optional, so old records still read. */
@@ -50,7 +50,7 @@ async function build(s: Pick<Snapshot, 'scopeField' | 'topics' | 'siteOwn'>) {
     db: { name: 'none', init: () => ({}) } as never,
     collections: [{ slug: 'users', auth: true, fields: [] }, ...(s.topics ? [{ slug: s.topics.relationTo!, fields: [{ name: 'name', type: 'text' as const }] }] : [])],
     plugins: [
-      watchlist({
+      playlists({
         scope: { ...scope, field: s.scopeField },
         enabled: () => false,
         ...(s.topics ? { topics: { ...s.topics, resolve: () => null } as never } : {}),
@@ -64,7 +64,7 @@ async function build(s: Pick<Snapshot, 'scopeField' | 'topics' | 'siteOwn'>) {
 
 describe('field parity with a site that had this built in', () => {
   for (const slug of ['creators', 'videos'] as const)
-    it.skipIf(!snapshot)(`${slug}: every field of the site is there with the same type, and only the listed new ones are added${snapshot ? '' : ' (skipped: WATCHLIST_PARITY_SNAPSHOT isn’t set)'}`, async () => {
+    it.skipIf(!snapshot)(`${slug}: every field of the site is there with the same type, and only the listed new ones are added${snapshot ? '' : ' (skipped: PLAYLISTS_PARITY_SNAPSHOT isn’t set)'}`, async () => {
       const ours = (await build(snapshot!))[slug]!
       const site = snapshot![slug].fields
       const missing = Object.keys(site).filter((n) => !(n in ours.fields))

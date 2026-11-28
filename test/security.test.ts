@@ -188,15 +188,15 @@ describe('S2: a claim holds against plain edits', () => {
 
 describe('nits', () => {
   it('the unit ledger shows an editor only their own sites’ units', async () => {
-    await payload.db.collections['watchlist-usage']!.collection.updateOne({ day: '2026-01-01' }, { $set: { day: '2026-01-01', units: 9, quotaStopped: false, bySite: { s_A: 4, s_B: 5 }, digests: { s_B: { daily: new Date() } } } }, { upsert: true })
-    const r = await h.rest('/watchlist-usage?where[day][equals]=2026-01-01', { token: tokens[staff.id] })
+    await payload.db.collections['playlists-usage']!.collection.updateOne({ day: '2026-01-01' }, { $set: { day: '2026-01-01', units: 9, quotaStopped: false, bySite: { s_A: 4, s_B: 5 }, digests: { s_B: { daily: new Date() } } } }, { upsert: true })
+    const r = await h.rest('/playlists-usage?where[day][equals]=2026-01-01', { token: tokens[staff.id] })
     expect(r.status).toBe(200)
     const doc = r.body.docs[0] as Doc
     expect(doc.units).toBeUndefined()
     expect(doc.digests).toBeUndefined()
     expect(doc.bySite).toEqual({ s_A: 4 })
-    expect((await h.rest('/watchlist-usage?where[units][greater_than]=1', { token: tokens[staff.id] })).status).toBeOneOf([400, 403])
-    expect((await h.rest('/watchlist-usage?where[day][equals]=2026-01-01', { token: tokens[admin.id] })).body.docs[0].units).toBe(9)
+    expect((await h.rest('/playlists-usage?where[units][greater_than]=1', { token: tokens[staff.id] })).status).toBeOneOf([400, 403])
+    expect((await h.rest('/playlists-usage?where[day][equals]=2026-01-01', { token: tokens[admin.id] })).body.docs[0].units).toBe(9)
   })
 
   it('a creator’s website takes http and https links only', async () => {

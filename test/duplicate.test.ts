@@ -3,17 +3,17 @@ import { createRequire } from 'node:module'
 import { createLocalReq, type CollectionBeforeOperationHook, type Config, type Payload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { watchlist } from '../src/index.js'
+import { playlists } from '../src/index.js'
 import { as, person, scope, startPayload, stopMongo, tokenOf, videoId, type Harness, type Person } from './harness.js'
 
 // The copy of graphql that builds Payload's schema (Node loads it as CommonJS; an import here would load a second one).
 const { graphql } = createRequire(import.meta.url)('graphql') as typeof import('graphql')
 
 // Duplicating is off for every collection the plugin adds, for everyone, server code included. Made-up data.
-const SLUGS = ['creators', 'videos', 'watchlist-usage'] as const
+const SLUGS = ['creators', 'videos', 'playlists-usage'] as const
 type Slug = (typeof SLUGS)[number]
 type Doc = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
-const NO_COPY = 'Watchlist records can’t be duplicated. Make a new one instead.'
+const NO_COPY = 'Playlists records can’t be duplicated. Make a new one instead.'
 /** A well-formed id that no record has, and one that isn't an id at all. */
 const UNKNOWN = '0123456789abcdef01234567'
 const MALFORMED = 'not-an-id'
@@ -21,8 +21,8 @@ const MALFORMED = 'not-an-id'
 async function seed(payload: Payload) {
   const creator = String((await payload.create({ collection: 'creators', data: { tenant: 'B', name: 'Made-up source', videosDefault: 'rules', syncNote: 'Made-up note', channels: [{ handle: '@made-up' }] } as never })).id)
   const video = String((await payload.create({ collection: 'videos', data: { tenant: 'B', creator, youtubeId: videoId('source'), title: 'Made-up video', source: 'api' } as never })).id)
-  const usage = String((await payload.create({ collection: 'watchlist-usage', data: { day: '2026-11-01', units: 3 } as never })).id)
-  return { creators: creator, videos: video, 'watchlist-usage': usage } as Record<Slug, string>
+  const usage = String((await payload.create({ collection: 'playlists-usage', data: { day: '2026-11-01', units: 3 } as never })).id)
+  return { creators: creator, videos: video, 'playlists-usage': usage } as Record<Slug, string>
 }
 const counts = async (payload: Payload) => Promise.all(SLUGS.map(async (collection) => (await payload.count({ collection })).totalDocs))
 const refusalOf = (work: Promise<unknown>) =>
@@ -105,7 +105,7 @@ describe('duplicating is off', () => {
     const names = mutationsOf(payload)
     expect(names).toContain('createCreator')
     expect(names).toContain('createVideo')
-    expect(names.filter((n) => /^duplicate(Creator|Video|WatchlistUsage)/.test(n))).toEqual([])
+    expect(names.filter((n) => n.startsWith('duplicate') && !n.startsWith('duplicatePayload'))).toEqual([])
   })
 
   it('an editor still creates a creator and a video on their own site: Local API, REST and GraphQL', async () => {
@@ -130,7 +130,7 @@ describe('duplicating is off', () => {
     const bodies: Record<Slug, Doc> = {
       creators: { tenant: 'A', name: 'Made-up direct', channels: [{ handle: '@direct', excludeKeywords: 'made-up', backfillToken: 'made-up' }], syncNote: 'made-up', doNotFeatureNote: 'made-up' },
       videos: { tenant: 'B', creator: ids.creators, youtubeId: videoId('direct'), title: 'Made-up direct', hiddenReason: 'made-up', claim: 'made-up', source: 'api', passedRules: true },
-      'watchlist-usage': { day: '2026-11-02', units: 1 },
+      'playlists-usage': { day: '2026-11-02', units: 1 },
     }
     for (const slug of SLUGS) {
       // The video is for site B, where the curator curates; the creator is for site A, which editorB doesn't edit.
@@ -143,7 +143,7 @@ describe('duplicating is off', () => {
       }
     }
     // Nobody creates a unit ledger row through access, an admin included.
-    await expect(payload.create({ collection: 'watchlist-usage', data: bodies['watchlist-usage'] as never, ...as(people.admin!, 'A') })).rejects.toThrow(/not allowed/)
+    await expect(payload.create({ collection: 'playlists-usage', data: bodies['playlists-usage'] as never, ...as(people.admin!, 'A') })).rejects.toThrow(/not allowed/)
     expect(await counts(payload)).toEqual(before)
   })
 })
@@ -209,7 +209,7 @@ describe('duplicating stays off when the site’s config turns it back on', () =
       const mutations: Record<Slug, [string, string]> = {
         creators: ['duplicateCreator', '{ name: "Made-up", slug: "made-up" }'],
         videos: ['duplicateVideo', `{ title: "Made-up", youtubeId: "${videoId('graphdup')}" }`],
-        'watchlist-usage': ['duplicateWatchlistUsage', '{ day: "2026-11-03" }'],
+        'playlists-usage': ['duplicatePlaylistsUsage', '{ day: "2026-11-03" }'],
       }
       for (const slug of SLUGS)
         for (const id of [ids[slug], UNKNOWN, MALFORMED]) {
@@ -232,7 +232,7 @@ describe('duplicating stays off when the site’s config turns it back on', () =
 describe('overrides', () => {
   it('can’t turn duplicating on', async () => {
     const on = (c: Doc) => ({ ...c, disableDuplicate: false })
-    const built = await watchlist({ scope, enabled: () => true, overrides: { creators: on as never, videos: on as never, usage: on as never } })({ collections: [] } as never)
+    const built = await playlists({ scope, enabled: () => true, overrides: { creators: on as never, videos: on as never, usage: on as never } })({ collections: [] } as never)
     expect(built.collections!.map((c) => [c.slug, c.disableDuplicate])).toEqual(SLUGS.map((s) => [s, true]))
   })
 })

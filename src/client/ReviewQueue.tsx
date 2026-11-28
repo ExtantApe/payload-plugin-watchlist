@@ -118,25 +118,25 @@ export function ReviewQueue({ rows: initial, total: initialTotal, api, collectio
   const hideText = labels?.hide ?? 'Always hide'
 
   return (
-    <section aria-labelledby="watchlist-review-heading" data-watchlist-review>
-      <h2 id="watchlist-review-heading" ref={heading} tabIndex={-1}>
+    <section aria-labelledby="playlists-review-heading" data-playlists-review>
+      <h2 id="playlists-review-heading" ref={heading} tabIndex={-1}>
         {labels?.heading ?? 'Waiting for review'}
       </h2>
-      <p data-watchlist-count>{labels?.waiting ? labels.waiting(total) : total === 1 ? '1 video waits for a yes.' : `${total} videos wait for a yes.`}</p>
-      <p role="status" aria-live="polite" data-watchlist-status>
+      <p data-playlists-count>{labels?.waiting ? labels.waiting(total) : total === 1 ? '1 video waits for a yes.' : `${total} videos wait for a yes.`}</p>
+      <p role="status" aria-live="polite" data-playlists-status>
         {status}
       </p>
       {problem ? (
-        <p role="alert" data-watchlist-problem>
+        <p role="alert" data-playlists-problem>
           {problem}
         </p>
       ) : null}
       {rows.length === 0 ? (
-        <p data-watchlist-empty>{labels?.empty ?? 'Nothing waits for review here.'}</p>
+        <p data-playlists-empty>{labels?.empty ?? 'Nothing waits for review here.'}</p>
       ) : (
         <ul ref={list} style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: '1.5rem' }}>
           {rows.map((row) => {
-            const titleId = `watchlist-review-${row.id}`
+            const titleId = `playlists-review-${row.id}`
             const facts = [row.creator, day(row.publishedAt), kindLabel(row.kind)].filter(Boolean)
             return (
               <li key={row.id} data-video={row.id}>

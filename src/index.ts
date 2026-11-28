@@ -1,4 +1,4 @@
-export { watchlist, checkOptions, DEFAULT_KINDS, DEFAULT_SHOWN_KINDS } from './plugin.js'
+export { playlists, checkOptions, DEFAULT_KINDS, DEFAULT_SHOWN_KINDS } from './plugin.js'
 export { exactlyTrue, publicVideoWhere, publicCreatorWhere } from './access.js'
 export { syncCreator, syncDue, optionsOf, RETRY_WAITS_MS, GONE_TITLE, type SyncReport, type SyncOptions, type CronReport } from './sync.js'
 export { reviewVideo, reviewQueueCount, sendReviewDigest, waitingWhere, AlreadyDecided, type DigestReport } from './curation.js'

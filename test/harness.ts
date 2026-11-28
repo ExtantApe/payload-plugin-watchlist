@@ -2,11 +2,11 @@ import { mongooseAdapter } from '@payloadcms/db-mongodb'
 import { MongoMemoryReplSet } from 'mongodb-memory-server'
 import { buildConfig, getPayload, handleEndpoints, type Config, type Payload, type PayloadRequest } from 'payload'
 
-import { watchlist, type WatchlistOptions } from '../src/index.js'
+import { playlists, type PlaylistsOptions, type ResolvedOptions } from '../src/index.js'
 
 /**
  * Payload on an in-memory MongoDB replica set, with made-up people on two made-up sites (A and B). Each person has a
- * `site` and maybe a `role` (curator, staff, admin). A small plugin after Watchlist adds a `tenant` field, as a site's
+ * `site` and maybe a `role` (curator, staff, admin). A small plugin after Playlists adds a `tenant` field, as a site's
  * multi-tenant plugin would. A visitor's site comes from `req.context.site` (Local API) or an `x-site` header (REST).
  * Never a network call: the global fetch throws (test/setup.ts), and YouTube is a fake passed in.
  */
@@ -26,7 +26,7 @@ export async function stopMongo() {
 type U = { site?: string; role?: string } | null | undefined
 const userOf = (req: PayloadRequest) => req.user as U
 
-export const scope: WatchlistOptions['scope'] = {
+export const scope: PlaylistsOptions['scope'] = {
   field: 'tenant',
   ofRequest: (req) => {
     const fromContext = (req.context as { site?: string } | undefined)?.site
@@ -59,10 +59,10 @@ export const KINDS = [
 
 export type Harness = { payload: Payload; key: string; rest: (path: string, init?: { method?: string; body?: unknown; token?: string; site?: string }) => Promise<{ status: number; body: any }> } // eslint-disable-line @typescript-eslint/no-explicit-any
 
-export async function startPayload(change: (o: WatchlistOptions) => WatchlistOptions = (o) => o, extra: Partial<Config> = {}): Promise<Harness> {
+export async function startPayload(change: (o: PlaylistsOptions) => PlaylistsOptions = (o) => o, extra: Partial<Config> = {}): Promise<Harness> {
   const m = await startMongo()
   const options = change({ scope, enabled: () => true, kinds: KINDS, shownKinds: ['care', 'species-profile', 'build'], topicKinds: ['care', 'species-profile'] })
-  const key = `watchlist-${++n}`
+  const key = `playlists-${++n}`
   const payload = await getPayload({
     key,
     config: await buildConfig({
@@ -71,12 +71,13 @@ export async function startPayload(change: (o: WatchlistOptions) => WatchlistOpt
       typescript: { autoGenerate: false },
       db: mongooseAdapter({ url: m.getUri(key), ensureIndexes: true }),
       collections: [{ slug: 'users', auth: true, fields: [{ name: 'site', type: 'text' }, { name: 'role', type: 'select', options: ['curator', 'staff', 'admin'] }] }, ...(extra.collections ?? [])],
-      plugins: [watchlist(options), addTenantField, ...(extra.plugins ?? [])],
+      plugins: [playlists(options), addTenantField, ...(extra.plugins ?? [])],
       ...(extra.onInit ? { onInit: extra.onInit } : {}),
     }),
   } as never)
   const db = payload.db as unknown as { collections: Record<string, { ensureIndexes: () => Promise<void> }> }
-  await Promise.all(['creators', 'videos', 'watchlist-usage'].map((c) => db.collections[c]?.ensureIndexes()))
+  const { collections } = (payload.config.custom as { playlists: ResolvedOptions }).playlists
+  await Promise.all(Object.values(collections).map((c) => db.collections[c]!.ensureIndexes()))
   const rest: Harness['rest'] = async (path, init = {}) => {
     const headers: Record<string, string> = { 'content-type': 'application/json' }
     if (init.token) headers.Authorization = `JWT ${init.token}`

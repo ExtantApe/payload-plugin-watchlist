@@ -1,7 +1,7 @@
 import { createLocalReq, type Payload, type PayloadRequest } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { GONE_TITLE, reviewQueueCount, sendReviewDigest, sweepGoneVideos, syncDue, syncNow, type Classified, type WatchlistNotice } from '../src/index.js'
+import { GONE_TITLE, reviewQueueCount, sendReviewDigest, sweepGoneVideos, syncCreator, syncDue, syncNow, type Classified, type PlaylistsNotice } from '../src/index.js'
 import { reviewQueue } from '../src/server/index.js'
 import { fakeYoutube } from './fakeYoutube.js'
 import { channelId, person, startPayload, stopMongo, tokenOf, videoId, type Harness, type Person } from './harness.js'
@@ -19,7 +19,7 @@ let payload: Payload
 let member: Person, curator: Person, curator2: Person, staff: Person, staffB: Person, curatorB: Person, admin: Person
 const tokens: Record<string, string> = {}
 const ids: Record<string, string> = {}
-const notices: WatchlistNotice[] = []
+const notices: PlaylistsNotice[] = []
 const yt = fakeYoutube()
 const state = { key: KEY as string | null, enabled: true as unknown, notifyFails: false, slowMs: 0 }
 const topicIds: Record<string, string> = {}
@@ -28,8 +28,8 @@ const reqOf = (p: Person | null, site?: string) => createLocalReq({ user: (p ?? 
 const raw = (slug: string) => (payload.db as unknown as { collections: Record<string, { collection: { findOne: (f: object) => Promise<Doc | null>; updateOne: (f: object, u: object, o?: object) => Promise<unknown>; deleteMany: (f: object) => Promise<unknown> } }> }).collections[slug]!.collection
 /** Ends a creator's rest after a sync, as if the cooldown had passed. */
 const rested = (id: string) => (payload.db as unknown as { collections: Record<string, { updateOne: (f: object, u: object) => Promise<unknown> }> }).collections.creators!.updateOne({ _id: id }, { $set: { lastSyncedAt: new Date(Date.now() - 3600_000) } })
-const clearUsage = () => raw('watchlist-usage').deleteMany({})
-const usage = async () => { const d = await raw('watchlist-usage').findOne({}); return d ? [d] : [] }
+const clearUsage = () => raw('playlists-usage').deleteMany({})
+const usage = async () => { const d = await raw('playlists-usage').findOne({}); return d ? [d] : [] }
 const post = (path: string, p: Person | null, body?: unknown) => h.rest(path, { method: 'POST', token: p ? tokens[p.id] : undefined, site: p ? undefined : 'A', body })
 const video = (id: string) => payload.findByID({ collection: 'videos', id, overrideAccess: true, depth: 0 }) as unknown as Promise<Doc>
 let seq = 0
@@ -42,7 +42,7 @@ function options(mode: 'keep' | 'clear') {
   return (o: Parameters<Parameters<typeof startPayload>[0] & object>[0]) => ({
     ...o,
     enabled: () => state.enabled as boolean,
-    notify: async (n: WatchlistNotice) => {
+    notify: async (n: PlaylistsNotice) => {
       if (state.notifyFails) throw new Error('made-up send failure')
       notices.push(n)
     },
@@ -139,7 +139,7 @@ describe('Sync now', () => {
   it('stays inside the daily cap: at the cap it stops cleanly and spends nothing', async () => {
     await rested(ids.now!)
     await post(`/creators/${ids.now}/sync`, staff)
-    await raw('watchlist-usage').updateOne({}, { $set: { units: CAP } })
+    await raw('playlists-usage').updateOne({}, { $set: { units: CAP } })
     await rested(ids.now!)
     yt.reset()
     const r = await post(`/creators/${ids.now}/sync`, staff)
@@ -210,7 +210,7 @@ describe('Sync now', () => {
   it('a site’s share of the day’s units: one site at its share stops cleanly, and another site still syncs', async () => {
     await rested(ids.now!)
     await post(`/creators/${ids.now}/sync`, staff)
-    await raw('watchlist-usage').updateOne({}, { $set: { units: SITE_CAP, bySite: { s_A: SITE_CAP } } })
+    await raw('playlists-usage').updateOne({}, { $set: { units: SITE_CAP, bySite: { s_A: SITE_CAP } } })
     await rested(ids.now!)
     yt.reset()
     const mine = await post(`/creators/${ids.now}/sync`, staff)
@@ -229,14 +229,14 @@ describe('Sync now', () => {
     expect((await usage())[0]!.bySite).toEqual({ s_A: SITE_CAP, s_B: theirs.body.units })
     // The cron goes on past a site that has used its share: site A's creators stop, site B's still sync.
     const later = new Date('2027-02-01T20:00:00Z')
-    await raw('watchlist-usage').deleteMany({})
+    await raw('playlists-usage').deleteMany({})
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(later)
-    await raw('watchlist-usage').updateOne({ day }, { $set: { day, units: SITE_CAP, quotaStopped: false, bySite: { s_A: SITE_CAP }, digests: {} } }, { upsert: true })
+    await raw('playlists-usage').updateOne({ day }, { $set: { day, units: SITE_CAP, quotaStopped: false, bySite: { s_A: SITE_CAP }, digests: {} } }, { upsert: true })
     const cron = await syncDue(payload, { now: later })
     expect(cron.stopped).toBeNull()
     expect(cron.reports.filter((r) => r.site === 'A' && r.stopped === 'site-cap').length).toBeGreaterThan(0)
     expect(cron.reports.filter((r) => r.site === 'B' && !r.stopped && !r.skipped).length).toBeGreaterThan(0)
-    expect(((await raw('watchlist-usage').findOne({ day }))!.bySite as Doc).s_A).toBe(SITE_CAP)
+    expect(((await raw('playlists-usage').findOne({ day }))!.bySite as Doc).s_A).toBe(SITE_CAP)
   })
 
   it('past the threshold, the curators hear at once after a Sync now', async () => {
@@ -244,7 +244,7 @@ describe('Sync now', () => {
     for (let i = 0; i < 4; i++) yt.upload(channelId('many'), { id: videoId(`many${i}`), title: `Made-up many ${i}` })
     const c = String((await payload.create({ collection: 'creators', data: { tenant: 'B', name: 'Made-up many', videosDefault: 'picked', channels: [{ handle: '@many' }] } as never })).id)
     expect((await post(`/creators/${c}/sync`, staffB)).status).toBe(200)
-    expect(notices).toEqual([expect.objectContaining({ kind: 'watchlist.review', site: 'B', urgent: true, waiting: 4 })])
+    expect(notices).toEqual([expect.objectContaining({ kind: 'playlists.review', site: 'B', urgent: true, waiting: 4 })])
     await payload.delete({ collection: 'videos', where: { creator: { equals: c } }, overrideAccess: true })
   })
 })
@@ -349,7 +349,7 @@ describe('the daily digest', () => {
     expect((await sendReviewDigest(payload, { mode: 'daily', sites: ['A'], now: day(4) }))[0]!.sent).toBe('daily')
     // A jump after the day's digest still goes out at once.
     expect((await sendReviewDigest(payload, { mode: 'urgent', sites: ['A'], now: day(4) }))[0]!.sent).toBe('urgent')
-    expect(notices.map((n) => (n.kind === 'watchlist.review' ? n.urgent : null))).toEqual([true, false, true])
+    expect(notices.map((n) => (n.kind === 'playlists.review' ? n.urgent : null))).toEqual([true, false, true])
   })
 })
 
@@ -383,10 +383,10 @@ describe('the gone-videos sweep', () => {
     expect(await sweepGoneVideos(payload, { now: NOW })).toMatchObject({ skipped: 'disabled', cleared: 0 })
     state.enabled = true
     await sweepGoneVideos(payload, { now: new Date('2020-01-01T00:00:00Z') }) // makes today's ledger row; nothing is that old
-    await raw('watchlist-usage').updateOne({}, { $set: { units: CAP, day: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(NOW) } }, { upsert: true })
+    await raw('playlists-usage').updateOne({}, { $set: { units: CAP, day: new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(NOW) } }, { upsert: true })
     expect(await sweepGoneVideos(payload, { now: NOW })).toMatchObject({ stopped: 'cap', cleared: 0, units: 0, checked: 0 })
     // The site's own share used up: its videos are left for the next run.
-    await raw('watchlist-usage').updateOne({}, { $set: { units: SITE_CAP, bySite: { s_A: SITE_CAP } } })
+    await raw('playlists-usage').updateOne({}, { $set: { units: SITE_CAP, bySite: { s_A: SITE_CAP } } })
     expect(await sweepGoneVideos(payload, { now: NOW })).toMatchObject({ stopped: 'site-cap', cleared: 0, units: 0, checked: 0 })
     yt.failNext.push({ status: 500, reason: 'backendError' })
     await clearUsage()
@@ -425,12 +425,12 @@ describe('the gone-videos sweep', () => {
     const mine = await gone('g-share-a', 60)
     const theirs = String((await payload.create({ collection: 'videos', data: { tenant: 'B', creator: ids.pickedB, youtubeId: videoId('g-share-b'), title: 'Made-up g-share-b', description: 'Made-up words', source: 'api', unavailable: true, unavailableSince: daysAgo(45) } as never })).id)
     const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(NOW)
-    await raw('watchlist-usage').updateOne({ day }, { $set: { day, units: SITE_CAP, quotaStopped: false, bySite: { s_A: SITE_CAP }, digests: {} } }, { upsert: true })
+    await raw('playlists-usage').updateOne({ day }, { $set: { day, units: SITE_CAP, quotaStopped: false, bySite: { s_A: SITE_CAP }, digests: {} } }, { upsert: true })
     const r = await sweepGoneVideos(payload, { now: NOW })
     expect(r).toMatchObject({ stopped: 'site-cap', checked: 1, cleared: 1, units: 1 })
     expect(await video(mine)).toMatchObject({ title: 'Made-up g-share-a', description: 'Made-up words' })
     expect(await video(theirs)).toMatchObject({ title: GONE_TITLE })
-    expect((await raw('watchlist-usage').findOne({ day }))!.bySite).toEqual({ s_A: SITE_CAP, s_B: 1 })
+    expect((await raw('playlists-usage').findOne({ day }))!.bySite).toEqual({ s_A: SITE_CAP, s_B: 1 })
   })
 
   it('with the default, `keep`, the sweep does nothing at all', async () => {
@@ -456,10 +456,32 @@ describe('the cron', () => {
     await payload.create({ collection: 'creators', data: { tenant: 'B', name: 'Made-up cron', videosDefault: 'picked', channels: [{ handle: '@cron' }] } as never })
     const r = await syncDue(payload, { now: later })
     expect(r.synced).toBeGreaterThan(0)
-    expect(notices.filter((n) => n.kind === 'watchlist.review')).toEqual([expect.objectContaining({ site: 'B', urgent: true })])
+    expect(notices.filter((n) => n.kind === 'playlists.review')).toEqual([expect.objectContaining({ site: 'B', urgent: true })])
     // Once a day: the next hour's run adds nothing new and says nothing more.
     notices.length = 0
     await syncDue(payload, { now: new Date(later.getTime() + 3600_000) })
-    expect(notices.filter((n) => n.kind === 'watchlist.review')).toEqual([])
+    expect(notices.filter((n) => n.kind === 'playlists.review')).toEqual([])
+  })
+})
+
+describe('a site that keeps its old usage ledger', () => {
+  it('counts today’s units from before the rename, so a day already at the cap spends nothing more', async () => {
+    const k = await startPayload(((o: Parameters<ReturnType<typeof options>>[0]) => ({ ...options('keep')(o), collections: { usage: 'watchlist-usage' } })) as never, TAXA)
+    try {
+      const now = new Date('2026-11-28T12:00:00Z')
+      const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(now)
+      const ledgerOf = (k.payload.db as unknown as { collections: Record<string, { collection: { insertOne: (d: object) => Promise<unknown>; findOne: (f: object) => Promise<Doc | null> } }> }).collections['watchlist-usage']!.collection
+      await ledgerOf.insertOne({ day, units: CAP, quotaStopped: false, bySite: {}, digests: {} })
+      yt.addChannel(channelId('kept'), '@kept')
+      yt.upload(channelId('kept'), { id: videoId('kept1'), title: 'Made-up kept' })
+      const creator = await k.payload.create({ collection: 'creators', data: { tenant: 'A', name: 'Made-up kept', videosDefault: 'rules', channels: [{ handle: '@kept' }] } as never })
+      const report = await syncCreator(k.payload, String(creator.id), { now })
+      expect(report).toMatchObject({ stopped: 'cap', units: 0 })
+      expect(yt.api()).toEqual([])
+      expect((await ledgerOf.findOne({ day }))!.units).toBe(CAP)
+      expect(k.payload.collections).not.toHaveProperty('playlists-usage')
+    } finally {
+      await k.payload.destroy()
+    }
   })
 })

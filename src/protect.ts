@@ -67,14 +67,14 @@ function narrow(base: Access, extra: Access): Access {
 
 export function protect(base: CollectionConfig, out: CollectionConfig, seen: Set<unknown>): CollectionConfig {
   const slug = base.slug
-  if (!out || typeof out !== 'object' || !Array.isArray(out.fields)) throw new Error(`Watchlist: overrides.${slug} must return the collection.`)
-  if (out.slug !== slug) throw new Error(`Watchlist: overrides.${slug} changed the slug to "${out.slug}". The slug can’t change.`)
+  if (!out || typeof out !== 'object' || !Array.isArray(out.fields)) throw new Error(`Playlists: overrides.${slug} must return the collection.`)
+  if (out.slug !== slug) throw new Error(`Playlists: overrides.${slug} changed the slug to "${out.slug}". The slug can’t change.`)
   const theirs = new Map(topLevelFields<FieldLike>(out.fields).map((f) => [f.name, f]))
   for (const field of topLevelFields<FieldLike>(base.fields)) {
     const now = theirs.get(field.name)
-    if (!now) throw new Error(`Watchlist: overrides.${slug} removed the field "${field.name}", which the plugin needs.`)
+    if (!now) throw new Error(`Playlists: overrides.${slug} removed the field "${field.name}", which the plugin needs.`)
     if (now.type !== field.type || JSON.stringify(now.relationTo) !== JSON.stringify(field.relationTo))
-      throw new Error(`Watchlist: overrides.${slug} changed the field "${field.name}". Its type and target can’t change.`)
+      throw new Error(`Playlists: overrides.${slug} changed the field "${field.name}". Its type and target can’t change.`)
     if (field.access) {
       const access: Record<string, AnyFn> = { ...(now.access ?? {}) }
       for (const [op, fn] of Object.entries(field.access)) {

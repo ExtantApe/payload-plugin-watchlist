@@ -48,7 +48,7 @@ export function SyncNowButton({ id, api, collection = 'creators', labels, fetche
     }
   }
   return (
-    <div data-watchlist-sync-now style={{ marginBottom: 'var(--base, 1rem)' }}>
+    <div data-playlists-sync-now style={{ marginBottom: 'var(--base, 1rem)' }}>
       <button type="button" className="btn btn--style-primary btn--size-medium" style={{ ...TARGET, margin: 0 }} aria-disabled={busy} onClick={run}>
         {busy ? (labels?.busy ?? 'Syncing…') : (labels?.button ?? 'Sync now')}
       </button>

@@ -1,5 +1,7 @@
 # 0001: Watchlist design record
 
+Renamed to Playlists on 2026-11-28 (decisions); this record keeps the old name.
+
 Status: **proposed, for the maintainers' review** (2026-11-11). Phases 1 and 2 are built, on fakes; see `docs/decisions.md` for what the build chose. The owner's answers are under Open.
 
 ## Context

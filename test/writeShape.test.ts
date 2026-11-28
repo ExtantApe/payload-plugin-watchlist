@@ -14,8 +14,8 @@ import { as, channelId, person, startPayload, stopMongo, tokenOf, videoId, type 
 const { graphql } = createRequire(import.meta.url)('graphql') as typeof import('graphql')
 
 type Doc = Record<string, any> // eslint-disable-line @typescript-eslint/no-explicit-any
-type Slug = 'creators' | 'videos' | 'watchlist-usage'
-const BAD_SHAPE = 'Watchlist couldn’t save this: the data isn’t in the shape of the collection’s fields.'
+type Slug = 'creators' | 'videos' | 'playlists-usage'
+const BAD_SHAPE = 'Playlists couldn’t save this: the data isn’t in the shape of the collection’s fields.'
 const FAR = '2099-01-01T00:00:00.000Z'
 /** A well-formed id that no record has. */
 const UNKNOWN = '0123456789abcdef01234567'
@@ -152,9 +152,9 @@ describe('write data in the shape of the fields', () => {
   })
 
   it('the unit ledger takes the same rule', async () => {
-    const before = (await payload.count({ collection: 'watchlist-usage' })).totalDocs
-    await expectRefused(() => payload.create({ collection: 'watchlist-usage', data: { day: '2026-11-02', units: 1, $set: { units: 2 } } as never }))
-    expect((await payload.count({ collection: 'watchlist-usage' })).totalDocs).toBe(before)
+    const before = (await payload.count({ collection: 'playlists-usage' })).totalDocs
+    await expectRefused(() => payload.create({ collection: 'playlists-usage', data: { day: '2026-11-02', units: 1, $set: { units: 2 } } as never }))
+    expect((await payload.count({ collection: 'playlists-usage' })).totalDocs).toBe(before)
   })
 
   it('what a json field holds is stored as it is', async () => {
@@ -370,7 +370,7 @@ describe('write data in the shape of the fields', () => {
   })
 })
 
-describe('hooks added after Watchlist', () => {
+describe('hooks added after Playlists', () => {
   let payload: Payload
   const on = { before: false, change: false }
 

@@ -1,12 +1,12 @@
-# payload-plugin-watchlist
+# payload-plugin-playlists
 
-Watchlist for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.
+Playlists for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.
 
-**Status:** phase 2, early (0.x). It hasn’t been tried on a live site. Everything runs on fakes only: 393 tests (2 of them compare against a snapshot that isn't in this repo, and are skipped without it) on Payload 3.92 with an in-memory MongoDB, a made-up YouTube and made-up feeds, and the components in jsdom. Nothing has called YouTube. The admin's review view, its nav link and the Sync now field have never been opened in a real Payload admin, and no page has been seen in a browser or tried with a screen reader. The facts about YouTube's feed (no key needed, about 15 newest uploads, how fast it updates) and YouTube's terms on stored data are not checked yet. Podcasts and shows have their fields but no display or detection yet.
+**Status:** phase 2, early (0.x). Version 0.3.0, the first under the name Playlists, isn’t released yet, so `@extantape/payload-plugin-playlists` isn’t on npm. It hasn’t been tried on a live site. Everything runs on fakes only: 397 tests (2 of them compare against a snapshot that isn't in this repo, and are skipped without it) on Payload 3.92 with an in-memory MongoDB, a made-up YouTube and made-up feeds, and the components in jsdom. Nothing has called YouTube. The admin's review view, its nav link and the Sync now field have never been opened in a real Payload admin, and no page has been seen in a browser or tried with a screen reader. The facts about YouTube's feed (no key needed, about 15 newest uploads, how fast it updates) and YouTube's terms on stored data are not checked yet. Podcasts and shows have their fields but no display or detection yet.
 
 ## What it does
 
-- Two collections, `creators` and `videos`, with the slugs and field names the feature had in the site it was moved out of, so a site that had it built in can switch without a database migration. A third, `watchlist-usage`, counts API units a day.
+- Two collections, `creators` and `videos`, with the slugs and field names the feature had in the site it was moved out of, so a site that had it built in can switch without a database migration. A third, `playlists-usage`, counts API units a day.
 - Each creator has one or more YouTube channels, each with its own rules. In order: live streams, Shorts (up to 61 seconds, or up to 3 minutes with `#shorts`), vertical videos and comment replies are hidden; then videos under the channel's minimum length; then excluded playlists; then videos outside an "include only" playlist; then excluded keywords. What's left goes to your classifier, and only your `shownKinds` pass.
 - A creator's "Which videos" is `rules` (videos that pass show on their own) or `picked` (nothing shows until a curator says "Always show"). New creators start at `picked`, so a new creator's videos wait for a curator's yes; a curator can switch a trusted creator to `rules`. A stored creator with no value counts as `picked`. A curator's choice on a video wins over everything.
 - The channel's public feed is read first. If it shows nothing new and nothing else is due, a check costs no API units. New videos cost 1 unit per 50 for their details. `search.list` (100 units) is never used.
@@ -15,7 +15,7 @@ Watchlist for Payload: a curated list of YouTube creators for your site, with ru
 - A weekly re-check marks videos gone from YouTube (never shown while gone) and brings titles up to date; a monthly full read finds old videos made public later. One run per creator at a time.
 - Two curators can't both decide the same video. The first decision, from `reviewVideo` or a plain edit, takes an atomic claim; after that only that curator, the site's editors and admins can change the choice. Another curator gets a 409.
 - One review digest a day per site when videos wait (nothing for an empty queue), and one at once past 25 waiting, through your `notify`. Each goes at most once a day, and the daily one is skipped on a day the "at once" one already went. A send that fails is tried again on the next run.
-- A review queue in the admin (`/admin/watchlist-review`) for curators: every waiting video with "Always show" and "Always hide" buttons named with its title, a player to watch it in place, and a live region that says what was saved or refused. The admin nav shows how many wait.
+- A review queue in the admin (`/admin/playlists-review`) for curators: every waiting video with "Always show" and "Always hide" buttons named with its title, a player to watch it in place, and a live region that says what was saved or refused. The admin nav shows how many wait.
 - A "Sync now" button on each creator, for the site's editors. It reads the creator in full and re-checks its videos, through the same unit ledger, daily cap and run lock, so two clicks run one sync and the second gets "syncing already". A creator rests 10 minutes after any sync before the button works again, and a site can be given its own share of the day's units.
 - Server functions and page components for the public pages: the creator list, a creator's page, the video grid, and a video's page with the player. The site mounts them in its own routes.
 - The `Player` component shows the thumbnail and a real button named "Play: <title>". YouTube's player (youtube-nocookie.com) loads only after the click, and focus moves to it. A video YouTube won't let be embedded gets a "Watch on YouTube" link instead.
@@ -33,12 +33,14 @@ Only an exact `true` passes. A provider that answers `1`, `'true'`, `{}`, a prom
 
 "Shown" is recomputed on every write, the sync's included, so it can't be set around the rules through the API. A site's `overrides` can add fields, hooks and narrower access, but can't remove the plugin's fields, hooks or access, or turn duplicating on. The site's own hooks run after the plugin's, including after the one that computes `shown`, so site code can still set `shown` itself: keep that out of your hooks unless you mean it.
 
-**Some fields belong to the sync and the review.** A write with a person on the request, an admin's included, never sets them, on a new record or an existing one:
+**Some fields belong to the sync and the review.** A write with a person on the request, an admin's included, never sets them, on a new record or an existing one, unless server code passes the plugin's `SYNC_CONTEXT` (below):
 
 - **Videos:** `claim`, `hiddenReason`, `ruleKey`, `passedRules`, `source`, `curation`, `channelId`, `unavailable`, `unavailableSince`, `embeddable`, `madeForKids` and, with `topics`, the topic names.
 - **Creators:** `lastSyncedAt`, `lastRecheckAt`, `lastFullSyncAt`, `syncingSince` and `syncNote`, and on each channel `uploads`, `backfillToken`, `backfillDone` and `rssSeen`.
 
 The plugin drops a sent value without an error and keeps what's stored, because the admin sends the whole record back on save. On a new video `unavailable` starts off, so a video a person adds by hand shows only through a person's choice (**Always show**, or **Shown** ticked). The sync, the review and server code that writes with no person on the request set these fields. `doNotFeature` and its note are still for editors and admins to write.
+
+**`SYNC_CONTEXT` marks a write as the sync's own.** When server code passes `context: { [SYNC_CONTEXT]: true }`, the plugin treats the write that way even with a person on the request. The write can set the fields above, and the plugin skips its other checks for a person's write: the site and curator limits, locking an edited video against the sync, keeping the choice and **Shown** in step, and the review claim. It doesn't call `revalidate` for that write either. Access control is unchanged by it. Pass it only from trusted server code, and never build a `context` from request input.
 
 When a person points a channel row at a different channel, the row's sync state starts over, so the next sync looks the channel up and reads its uploads from the start. A handle edit that resolves to the same channel keeps its state.
 
@@ -46,7 +48,7 @@ Write data has to be in the shape of the collection's fields. A key that starts 
 
 A video and its creator must be on the same site; anything else is refused, and the public read checks both.
 
-**Duplicating is off** for all three collections, for everyone, server code included: `payload.duplicate`, `payload.create` with `duplicateFromID`, REST and GraphQL. The admin has no Duplicate action for them. To make a record like another one, create it and pass the fields you want. The plugin sets this again at startup, in an `onInit` that runs after your config's own and those of plugins listed before Watchlist. A plugin listed after Watchlist can still run code after it, so list any plugin that could turn duplicating on before Watchlist, and leave `disableOnInit` off.
+**Duplicating is off** for all three collections, for everyone, server code included: `payload.duplicate`, `payload.create` with `duplicateFromID`, REST and GraphQL. The admin has no Duplicate action for them. To make a record like another one, create it and pass the fields you want. The plugin sets this again at startup, in an `onInit` that runs after your config's own and those of plugins listed before Playlists. A plugin listed after Playlists can still run code after it, so list any plugin that could turn duplicating on before Playlists, and leave `disableOnInit` off.
 
 ### What the public can read
 
@@ -68,7 +70,7 @@ Everything not listed here is for an admin and the record's own site's curators 
 ## Install or build
 
 ```sh
-npm install @extantape/payload-plugin-watchlist
+npm install @extantape/payload-plugin-playlists
 ```
 
 To build it from this repo:
@@ -83,10 +85,10 @@ npm run build
 Node 22 or later, Payload 3.92 or later, MongoDB (the run lock, the unit ledger and the review claim use atomic MongoDB updates).
 
 ```ts
-import { watchlist } from '@extantape/payload-plugin-watchlist'
+import { playlists } from '@extantape/payload-plugin-playlists'
 
 plugins: [
-  watchlist({
+  playlists({
     scope: { field: 'tenant', ofRequest, sitesFor, isAdmin },
     enabled: (req) => outsideCallsAllowed(),
     youtube: { apiKey: () => yourSecrets.youtubeKey ?? null },
@@ -96,6 +98,20 @@ plugins: [
   }),
 ]
 ```
+
+## Upgrading from Watchlist
+
+This package was `@extantape/payload-plugin-watchlist`. No old names are kept, so a site that used it makes these changes:
+
+1. Remove the old package and install the new one.
+2. Change `watchlist(` to `playlists(`, and update your imports (including those from `/server`, `/pages`, `/client` and `/rsc`) and type names: `WatchlistOptions` is `PlaylistsOptions`, and `WatchlistNotice` is `PlaylistsNotice`.
+3. Keep your usage ledger with `collections: { usage: 'watchlist-usage' }`. If you don't, today's unit count starts again from zero, so the day can spend up to the cap a second time (each site's cap too), and a digest already sent today can be sent again. A new ledger also forgets that a YouTube quota error stopped today (`quotaStopped`). Don't run the old and new versions side by side with different ledgers.
+4. Change the notice kinds your `notify` handles, and any stored per-person notice preferences, to `playlists.review` and `playlists.sync-problem`. Otherwise opt-outs stop applying or notices are dropped.
+5. The review page is now `/playlists-review` under the admin route. To keep the old address, set `admin: { reviewPath: '/watchlist-review' }`.
+6. Run `payload generate:importmap` and `payload generate:types`.
+7. Rename any CSS or tests that use `data-watchlist-*` or the review queue's `watchlist-review-*` ids, which are now `data-playlists-*` and `playlists-review-*`. If you take the new usage slug, rename the GraphQL type `WatchlistUsage` to `PlaylistsUsage` too.
+8. Read the options from `config.custom.playlists`. Where your code passes the sync's context key, import `SYNC_CONTEXT` instead of writing its value out. It marks a write as the sync's own, so pass it only from trusted server code, and never build a `context` from request input.
+9. The admin group is now "Playlists". To keep the old one, set `labels: { group: 'Watchlist' }`.
 
 ## Options
 
@@ -118,11 +134,11 @@ plugins: [
 | `topics` | none | Topic pages (`relationTo`, the site's field names, `resolve(name, req)`) |
 | `classify` | none: nothing shows by the rules | `(videos, { req })`, each `{ key, title, description, channel }` |
 | `classifyDescriptionChars` | 700 | How much of each description the classifier gets; 0 sends titles only |
-| `notify` | none | `watchlist.review` and `watchlist.sync-problem` notices |
-| `admin` | `{ reviewPath: '/watchlist-review' }` | Where the review view lives under the admin route. `false` leaves the view and its nav link out; Sync now and the two routes stay. |
+| `notify` | none | `playlists.review` and `playlists.sync-problem` notices |
+| `admin` | `{ reviewPath: '/playlists-review' }` | Where the review view lives under the admin route. `false` leaves the view and its nav link out; Sync now and the two routes stay. |
 | `revalidate` | none | Your cache, after a sync or a person's change |
 | `overrides` | none | `creators`, `videos`, `usage`: `(collection) => collection` |
-| `collections` | `creators`, `videos`, `watchlist-usage` | Slugs |
+| `collections` | `creators`, `videos`, `playlists-usage` | Slugs |
 
 ## Commands
 
@@ -151,8 +167,8 @@ A Payload plugin can't add Next.js routes, so the site mounts the pages in thin 
 
 ```tsx
 // app/(frontend)/watch/page.tsx
-import { listVideos } from '@extantape/payload-plugin-watchlist/server'
-import { VideosPage } from '@extantape/payload-plugin-watchlist/pages'
+import { listVideos } from '@extantape/payload-plugin-playlists/server'
+import { VideosPage } from '@extantape/payload-plugin-playlists/pages'
 
 const paths = { videos: '/watch', creator: (slug: string) => `/watch/c/${slug}`, video: (id: string) => `/watch/v/${id}` }
 
@@ -179,12 +195,12 @@ export default async function Page({ searchParams }) {
 
 ## On its own, and with others
 
-Watchlist imports no other plugin and needs none. It works with only Payload and MongoDB.
+Playlists imports no other plugin and needs none. It works with only Payload and MongoDB.
 
 Things it can work with, all optional and wired by the site:
 - **Notifications:** pass its send function as `notify`, so curators get the digest and editors hear when a sync stops.
 - **AI Budget:** wrap your `classify` with its budget check. Over budget, videos wait unclassified, so they don't show.
-- **A multi-tenant plugin:** it adds the site field; Watchlist reads it through `scope`.
+- **A multi-tenant plugin:** it adds the site field; Playlists reads it through `scope`.
 
 ## License
 

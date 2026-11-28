@@ -3,7 +3,7 @@ import type { Config, Plugin } from 'payload'
 import { creatorsCollection, PACKAGE, usageCollection, videosCollection } from './collections.js'
 import { keepNoCopy, keepShape } from './noCopy.js'
 import { functionsOf, protect } from './protect.js'
-import type { Option, ResolvedOptions, WatchlistOptions } from './types.js'
+import type { Option, ResolvedOptions, PlaylistsOptions } from './types.js'
 
 /** A short neutral list; a site passes its own. */
 export const DEFAULT_KINDS: Option[] = [
@@ -17,7 +17,7 @@ export const DEFAULT_KINDS: Option[] = [
 export const DEFAULT_SHOWN_KINDS = ['explainer', 'how-to', 'field']
 
 const fail = (message: string): never => {
-  throw new Error(`Watchlist: ${message}`)
+  throw new Error(`Playlists: ${message}`)
 }
 const isFn = (v: unknown) => typeof v === 'function'
 const isZone = (z: unknown) => {
@@ -30,8 +30,8 @@ const isZone = (z: unknown) => {
   }
 }
 
-export function checkOptions(options: WatchlistOptions, config: Config): ResolvedOptions {
-  if (!options || typeof options !== 'object') fail('watchlist() needs its options: scope and enabled at least.')
+export function checkOptions(options: PlaylistsOptions, config: Config): ResolvedOptions {
+  if (!options || typeof options !== 'object') fail('playlists() needs its options: scope and enabled at least.')
   const { scope } = options
   if (!scope || typeof scope !== 'object') fail('`scope` is required: { field?, ofRequest?, sitesFor, isAdmin }.')
   if (!isFn(scope.sitesFor) || !isFn(scope.isAdmin)) fail('`scope.sitesFor` and `scope.isAdmin` must be functions.')
@@ -75,7 +75,7 @@ export function checkOptions(options: WatchlistOptions, config: Config): Resolve
   for (const k of ['classify', 'revalidate', 'notify'] as const) if (options[k] !== undefined && !isFn(options[k])) fail(`\`${k}\` must be a function, or left out.`)
   const descriptionChars = options.classifyDescriptionChars ?? 700
   if (!(Number.isInteger(descriptionChars) && descriptionChars >= 0)) fail('`classifyDescriptionChars` must be a whole number, 0 or more.')
-  const adminReviewPath = options.admin === false ? '' : (options.admin?.reviewPath ?? '/watchlist-review')
+  const adminReviewPath = options.admin === false ? '' : (options.admin?.reviewPath ?? '/playlists-review')
   if (options.admin !== false && !/^\/[\w-]+(\/[\w-]+)*$/.test(adminReviewPath)) fail('`admin.reviewPath` must be a path under the admin route, such as "/watch-review".')
   if (yt.fetch !== undefined && !isFn(yt.fetch)) fail('`youtube.fetch` must be a function, or left out.')
   if (options.overrides !== undefined) {
@@ -84,7 +84,7 @@ export function checkOptions(options: WatchlistOptions, config: Config): Resolve
       if (!isFn(fn)) fail(`\`overrides.${k}\` must be a function (collection) => collection.`)
     }
   }
-  const collections = { creators: 'creators', videos: 'videos', usage: 'watchlist-usage', ...(options.collections ?? {}) }
+  const collections = { creators: 'creators', videos: 'videos', usage: 'playlists-usage', ...(options.collections ?? {}) }
   const existing = new Set((config.collections ?? []).map((c) => c.slug))
   for (const slug of Object.values(collections)) if (existing.has(slug)) fail(`the config already has a "${slug}" collection. Remove it: the plugin adds it.`)
   if (options.topics && !existing.has(options.topics.relationTo)) fail(`\`topics.relationTo\` names "${options.topics.relationTo}", which isn’t a collection here.`)
@@ -112,11 +112,11 @@ export function checkOptions(options: WatchlistOptions, config: Config): Resolve
 }
 
 /**
- * Watchlist for Payload. Adds `creators`, `videos` and `watchlist-usage`, with the site's own fields and changes
- * brought in through `overrides`, and keeps the options at `config.custom.watchlist` for the sync.
+ * Playlists for Payload. Adds `creators`, `videos` and `playlists-usage`, with the site's own fields and changes
+ * brought in through `overrides`, and keeps the options at `config.custom.playlists` for the sync.
  */
-export const watchlist =
-  (options: WatchlistOptions): Plugin =>
+export const playlists =
+  (options: PlaylistsOptions): Plugin =>
   (config: Config): Config => {
     const o = checkOptions(options, config)
     const builders = { creators: creatorsCollection, videos: videosCollection, usage: usageCollection } as const
@@ -131,9 +131,9 @@ export const watchlist =
     const out: Config = {
       ...config,
       collections: [...(config.collections ?? []), ...collections],
-      custom: { ...config.custom, watchlist: o },
-      // Runs after the site's own onInit and those of plugins listed before Watchlist. It keeps the shape check on the
-      // plugin's collections and keeps duplicating off. A plugin listed after Watchlist can still run code after this.
+      custom: { ...config.custom, playlists: o },
+      // Runs after the site's own onInit and those of plugins listed before Playlists. It keeps the shape check on the
+      // plugin's collections and keeps duplicating off. A plugin listed after Playlists can still run code after this.
       onInit: async (payload) => {
         await config.onInit?.(payload)
         keepShape(payload, Object.values(o.collections))
@@ -150,7 +150,7 @@ export const watchlist =
         components: {
           ...components,
           afterNavLinks: [...(components?.afterNavLinks ?? []), `${PACKAGE}/rsc#ReviewNavLink`],
-          views: { ...components?.views, watchlistReview: { Component: `${PACKAGE}/rsc#ReviewView`, path: o.adminReviewPath as `/${string}`, exact: true } },
+          views: { ...components?.views, playlistsReview: { Component: `${PACKAGE}/rsc#ReviewView`, path: o.adminReviewPath as `/${string}`, exact: true } },
         },
       },
     }

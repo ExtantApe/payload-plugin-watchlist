@@ -63,7 +63,7 @@ export type DataApi = ReturnType<typeof dataApi>
 export const COST = { channel: 1, playlistPage: 1, videos: 1, playlistTitle: 1 } as const
 
 export function dataApi(key: string, fetcher: typeof fetch) {
-  if (typeof key !== 'string' || !key) throw new Error('Watchlist: the Data API needs a key.')
+  if (typeof key !== 'string' || !key) throw new Error('Playlists: the Data API needs a key.')
   async function get<T>(path: string, params: Record<string, string | number | undefined>): Promise<T> {
     const q = new URLSearchParams(Object.entries({ ...params, key }).flatMap(([k, v]) => (v === undefined ? [] : [[k, String(v)] as [string, string]])))
     let res: Response
@@ -108,7 +108,7 @@ export function dataApi(key: string, fetcher: typeof fetch) {
     /** Details for up to 50 videos. Missing ones are gone (deleted or private). */
     async videos(ids: string[]): Promise<YtVideo[]> {
       if (!ids.length) return []
-      if (ids.length > 50) throw new Error('Watchlist: at most 50 videos a call.')
+      if (ids.length > 50) throw new Error('Playlists: at most 50 videos a call.')
       const body = await get<{
         items?: {
           id: string
