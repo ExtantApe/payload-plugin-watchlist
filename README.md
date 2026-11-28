@@ -2,7 +2,7 @@
 
 Watchlist for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.
 
-**Status:** phase 2, not on npm, no site uses it. Everything runs on fakes only: 393 tests (2 of them compare against a snapshot that isn't in this repo, and are skipped without it) on Payload 3.92 with an in-memory MongoDB, a made-up YouTube and made-up feeds, and the components in jsdom. Nothing has called YouTube. The admin's review view, its nav link and the Sync now field have never been opened in a real Payload admin, and no page has been seen in a browser or tried with a screen reader. The facts about YouTube's feed (no key needed, about 15 newest uploads, how fast it updates) and YouTube's terms on stored data are not checked yet. Podcasts and shows have their fields but no display or detection yet.
+**Status:** phase 2, early (0.x). It hasn’t been tried on a live site. Everything runs on fakes only: 393 tests (2 of them compare against a snapshot that isn't in this repo, and are skipped without it) on Payload 3.92 with an in-memory MongoDB, a made-up YouTube and made-up feeds, and the components in jsdom. Nothing has called YouTube. The admin's review view, its nav link and the Sync now field have never been opened in a real Payload admin, and no page has been seen in a browser or tried with a screen reader. The facts about YouTube's feed (no key needed, about 15 newest uploads, how fast it updates) and YouTube's terms on stored data are not checked yet. Podcasts and shows have their fields but no display or detection yet.
 
 ## What it does
 
@@ -67,7 +67,11 @@ Everything not listed here is for an admin and the record's own site's curators 
 
 ## Install or build
 
-Not on npm. In this repo:
+```sh
+npm install @extantape/payload-plugin-watchlist
+```
+
+To build it from this repo:
 
 ```sh
 npm ci
