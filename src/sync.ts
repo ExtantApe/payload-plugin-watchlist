@@ -1,7 +1,7 @@
 import { createLocalReq, type Payload, type PayloadRequest } from 'payload'
 
 import { exactlyTrue, idOf } from './access.js'
-import { syncContext, topicNames } from './collections.js'
+import { ownContext, syncContext, topicNames } from './collections.js'
 import { ledger as makeLedger, type Ledger } from './ledger.js'
 import { FeedError, readFeed, type FeedEntry } from './rss.js'
 import { channelIdOf, lines, playlistIdOf, ruleHide, ruleKeyOf, youtubeImage, type ChannelRules } from './rules.js'
@@ -160,10 +160,10 @@ export async function syncCreator(payload: Payload, creatorId: string, opts: Syn
   const write = async (existing: Stored | undefined, data: Record<string, unknown>) => {
     const scoped = o.scope.field ? { ...data, [o.scope.field]: creator[o.scope.field] !== undefined ? idOf(creator[o.scope.field]) : undefined } : data
     if (existing) {
-      await payload.update({ collection: o.collections.videos, id: existing.id, data: scoped as never, overrideAccess: true, depth: 0, context: syncContext, req })
+      await payload.update({ collection: o.collections.videos, id: existing.id, data: scoped as never, overrideAccess: true, depth: 0, context: syncContext, req: ownContext(req) })
       report.updated++
     } else {
-      await payload.create({ collection: o.collections.videos, data: scoped as never, overrideAccess: true, depth: 0, context: syncContext, req })
+      await payload.create({ collection: o.collections.videos, data: scoped as never, overrideAccess: true, depth: 0, context: syncContext, req: ownContext(req) })
       report.added++
     }
   }
@@ -385,7 +385,7 @@ export async function syncCreator(payload: Payload, creatorId: string, opts: Syn
     overrideAccess: true,
     depth: 0,
     context: syncContext,
-    req,
+    req: ownContext(req),
   })
   return report
 }
@@ -482,7 +482,7 @@ async function clearGone(payload: Payload, o: ResolvedOptions, creatorId: string
     select: { id: true } as never,
     req,
   })
-  for (const d of docs as unknown as { id: string }[]) await payload.update({ collection: o.collections.videos, id: d.id, data: { title: GONE_TITLE, description: null, thumbnail: null, duration: null, playlists: [] } as never, overrideAccess: true, depth: 0, context: syncContext, req })
+  for (const d of docs as unknown as { id: string }[]) await payload.update({ collection: o.collections.videos, id: d.id, data: { title: GONE_TITLE, description: null, thumbnail: null, duration: null, playlists: [] } as never, overrideAccess: true, depth: 0, context: syncContext, req: ownContext(req) })
   return docs.length
 }
 

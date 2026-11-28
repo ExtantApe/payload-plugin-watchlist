@@ -72,6 +72,7 @@ export async function startPayload(change: (o: WatchlistOptions) => WatchlistOpt
       db: mongooseAdapter({ url: m.getUri(key), ensureIndexes: true }),
       collections: [{ slug: 'users', auth: true, fields: [{ name: 'site', type: 'text' }, { name: 'role', type: 'select', options: ['curator', 'staff', 'admin'] }] }, ...(extra.collections ?? [])],
       plugins: [watchlist(options), addTenantField, ...(extra.plugins ?? [])],
+      ...(extra.onInit ? { onInit: extra.onInit } : {}),
     }),
   } as never)
   const db = payload.db as unknown as { collections: Record<string, { ensureIndexes: () => Promise<void> }> }

@@ -1,6 +1,7 @@
 import type { Config, Plugin } from 'payload'
 
 import { creatorsCollection, PACKAGE, usageCollection, videosCollection } from './collections.js'
+import { keepNoCopy, keepShape } from './noCopy.js'
 import { functionsOf, protect } from './protect.js'
 import type { Option, ResolvedOptions, WatchlistOptions } from './types.js'
 
@@ -127,7 +128,18 @@ export const watchlist =
       const copy = builders[key](o)
       return protect(base, override(copy), functionsOf(copy))
     })
-    const out: Config = { ...config, collections: [...(config.collections ?? []), ...collections], custom: { ...config.custom, watchlist: o } }
+    const out: Config = {
+      ...config,
+      collections: [...(config.collections ?? []), ...collections],
+      custom: { ...config.custom, watchlist: o },
+      // Runs after the site's own onInit and those of plugins listed before Watchlist. It keeps the shape check on the
+      // plugin's collections and keeps duplicating off. A plugin listed after Watchlist can still run code after this.
+      onInit: async (payload) => {
+        await config.onInit?.(payload)
+        keepShape(payload, Object.values(o.collections))
+        keepNoCopy(payload, Object.values(o.collections))
+      },
+    }
     if (options.admin === false) return out
     // The review view and its nav link. Both check the person themselves; a signed-out or unroled visit shows a refusal.
     const components = config.admin?.components

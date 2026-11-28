@@ -2,7 +2,7 @@
 
 Watchlist for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.
 
-**Status:** phase 2, not on npm, no site uses it. Everything runs on fakes only: 284 tests (2 of them compare against a snapshot that isn't in this repo, and are skipped without it) on Payload 3.92 with an in-memory MongoDB, a made-up YouTube and made-up feeds, and the components in jsdom. Nothing has called YouTube. The admin's review view, its nav link and the Sync now field have never been opened in a real Payload admin, and no page has been seen in a browser or tried with a screen reader. The facts about YouTube's feed (no key needed, about 15 newest uploads, how fast it updates) and YouTube's terms on stored data are not checked yet. Podcasts and shows have their fields but no display or detection yet.
+**Status:** phase 2, not on npm, no site uses it. Everything runs on fakes only: 393 tests (2 of them compare against a snapshot that isn't in this repo, and are skipped without it) on Payload 3.92 with an in-memory MongoDB, a made-up YouTube and made-up feeds, and the components in jsdom. Nothing has called YouTube. The admin's review view, its nav link and the Sync now field have never been opened in a real Payload admin, and no page has been seen in a browser or tried with a screen reader. The facts about YouTube's feed (no key needed, about 15 newest uploads, how fast it updates) and YouTube's terms on stored data are not checked yet. Podcasts and shows have their fields but no display or detection yet.
 
 ## What it does
 
@@ -31,9 +31,22 @@ Only an exact `true` passes. A provider that answers `1`, `'true'`, `{}`, a prom
 | Editor of a site | Creates, changes and deletes creators and videos of that site, and runs Sync now on its creators. Can't move a record to another site. |
 | Admin | Everything. |
 
-"Shown" is recomputed on every write, the sync's included, so it can't be set around the rules through the API. A site's `overrides` can add fields, hooks and narrower access, but can't remove the plugin's fields, hooks or access. The site's own hooks run after the plugin's, including after the one that computes `shown`, so site code can still set `shown` itself: keep that out of your hooks unless you mean it.
+"Shown" is recomputed on every write, the sync's included, so it can't be set around the rules through the API. A site's `overrides` can add fields, hooks and narrower access, but can't remove the plugin's fields, hooks or access, or turn duplicating on. The site's own hooks run after the plugin's, including after the one that computes `shown`, so site code can still set `shown` itself: keep that out of your hooks unless you mean it.
+
+**Some fields belong to the sync and the review.** A write with a person on the request, an admin's included, never sets them, on a new record or an existing one:
+
+- **Videos:** `claim`, `hiddenReason`, `ruleKey`, `passedRules`, `source`, `curation`, `channelId`, `unavailable`, `unavailableSince`, `embeddable`, `madeForKids` and, with `topics`, the topic names.
+- **Creators:** `lastSyncedAt`, `lastRecheckAt`, `lastFullSyncAt`, `syncingSince` and `syncNote`, and on each channel `uploads`, `backfillToken`, `backfillDone` and `rssSeen`.
+
+The plugin drops a sent value without an error and keeps what's stored, because the admin sends the whole record back on save. On a new video `unavailable` starts off, so a video a person adds by hand shows only through a person's choice (**Always show**, or **Shown** ticked). The sync, the review and server code that writes with no person on the request set these fields. `doNotFeature` and its note are still for editors and admins to write.
+
+When a person points a channel row at a different channel, the row's sync state starts over, so the next sync looks the channel up and reads its uploads from the start. A handle edit that resolves to the same channel keeps its state.
+
+Write data has to be in the shape of the collection's fields. A key that starts with `$` or contains a dot (outside json and rich text fields), or a list with two rows sharing an id, is refused with a 400, for every write, server code included. A list field takes a list, `null`, the number `0` or the text `'0'`. The admin sends an empty list as 0, and Payload saves `0` and `'0'` as an empty list. Anything else in a list field is refused the same way. Writes made directly through the database adapter skip Payload's hooks and aren't checked.
 
 A video and its creator must be on the same site; anything else is refused, and the public read checks both.
+
+**Duplicating is off** for all three collections, for everyone, server code included: `payload.duplicate`, `payload.create` with `duplicateFromID`, REST and GraphQL. The admin has no Duplicate action for them. To make a record like another one, create it and pass the fields you want. The plugin sets this again at startup, in an `onInit` that runs after your config's own and those of plugins listed before Watchlist. A plugin listed after Watchlist can still run code after it, so list any plugin that could turn duplicating on before Watchlist, and leave `disableOnInit` off.
 
 ### What the public can read
 

@@ -1,11 +1,13 @@
 import { randomUUID } from 'node:crypto'
-import { Forbidden, slugField, type CollectionAfterChangeHook, type CollectionBeforeChangeHook, type CollectionBeforeValidateHook, type CollectionConfig, type Field, type FieldHook, type CollectionBeforeOperationHook, type CollectionAfterReadHook, type Where } from 'payload'
+import { Forbidden, isolateObjectProperty, slugField, type CollectionAfterChangeHook, type CollectionBeforeChangeHook, type CollectionBeforeValidateHook, type CollectionConfig, type Field, type FieldHook, type CollectionBeforeOperationHook, type CollectionAfterReadHook, type PayloadRequest, type Where } from 'payload'
 import { generateKeyBetween } from 'payload/shared'
 
 import { createAccess, curateAccess, editAccess, editSites, holds, idOf, isAdmin, nobody, queryGuard, readCreators, readVideos, sitesFor, staffField, type InternalPaths } from './access.js'
 import { AlreadyDecided, CrossSite } from './errors.js'
 import { siteKey } from './ledger.js'
+import { noCopy } from './noCopy.js'
 import { reviewEndpoint, syncNowEndpoint } from './endpoints.js'
+import { shapeGuard, shapeGuardChange } from './shape.js'
 import { DAYS } from './schedule.js'
 import { channelIdOf, computeShown, isVideoId, youtubeImage } from './rules.js'
 import type { ResolvedOptions } from './types.js'
@@ -15,6 +17,8 @@ export const PACKAGE = '@extantape/payload-plugin-watchlist'
 export const SYNC_CONTEXT = 'watchlistSync'
 export const isSync = (context: unknown) => Boolean(context && (context as Record<string, unknown>)[SYNC_CONTEXT] === true)
 export const syncContext = { [SYNC_CONTEXT]: true, disableRevalidate: true }
+/** The request to pass along with `syncContext`: a copy with its own context, for the plugin's own write. */
+export const ownContext = (req: PayloadRequest): PayloadRequest => isolateObjectProperty(req, 'context')
 
 /** The fields a curator may change on a video of their site; everything else needs an editor. */
 export function curatorFields(o: ResolvedOptions): string[] {
@@ -115,6 +119,59 @@ function siteGuard(o: ResolvedOptions, role: 'edit' | 'curate'): CollectionBefor
   }
 }
 
+/** On a creator, and on each of its channels: the sync's own state. */
+const SYNC_CREATOR_FIELDS = ['lastSyncedAt', 'lastRecheckAt', 'lastFullSyncAt', 'syncingSince', 'syncNote']
+const SYNC_CHANNEL_FIELDS = ['uploads', 'backfillToken', 'backfillDone', 'rssSeen']
+/** On a video: what the sync and the review write, and what the plugin works out. The topic names are added with topics. */
+const SYNC_VIDEO_FIELDS = ['claim', 'hiddenReason', 'ruleKey', 'passedRules', 'source', 'channelId', 'curation', 'embeddable', 'madeForKids', 'unavailable', 'unavailableSince']
+
+/** Sets each field back to what's stored. With nothing stored, as on a new record, the sent value is dropped. */
+function keepStored(data: Record<string, unknown>, stored: Record<string, unknown> | undefined, fields: string[]) {
+  for (const f of fields) {
+    if (stored && stored[f] !== undefined) data[f] = stored[f]
+    else delete data[f]
+  }
+}
+
+/**
+ * Whether a person's change points a stored channel row at a different channel. The admin sends the stored channel ID
+ * back with a new handle, so in that case the ID is worked out again: a channel link gives it, and the next sync looks
+ * up anything else.
+ */
+function movedChannel(row: Record<string, unknown>, prev: Record<string, unknown>): boolean {
+  if (row.handle !== prev.handle && row.channelId === prev.channelId) row.channelId = channelIdOf(row.handle as string) ?? null
+  return (row.channelId ?? null) !== (prev.channelId ?? null)
+}
+
+/**
+ * A person's write, an admin's included, never sets these. They're dropped without an error, because the admin sends a
+ * whole record back when it's saved. Writes without a person and the plugin's own writes pass.
+ */
+const creatorSyncState: CollectionBeforeChangeHook = ({ data, originalDoc, req, context }) => {
+  if (!req.user || isSync(context)) return data
+  keepStored(data, originalDoc, SYNC_CREATOR_FIELDS)
+  if (Array.isArray(data.channels)) {
+    const rows = (originalDoc?.channels ?? []) as Record<string, unknown>[]
+    for (const row of data.channels as Record<string, unknown>[]) {
+      const prev = row.id ? rows.find((r) => r.id === row.id) : undefined
+      // A row pointed at a different channel starts its sync state over.
+      if (prev && movedChannel(row, prev)) for (const f of SYNC_CHANNEL_FIELDS) delete row[f]
+      else keepStored(row, prev, SYNC_CHANNEL_FIELDS)
+    }
+  }
+  return data
+}
+
+const videoSyncState =
+  (o: ResolvedOptions): CollectionBeforeChangeHook =>
+  ({ data, originalDoc, operation, req, context }) => {
+    if (!req.user || isSync(context)) return data
+    keepStored(data, originalDoc, [...SYNC_VIDEO_FIELDS, ...(o.topics ? [topicNames(o).names] : [])])
+    // The field's default, which applies to every new video.
+    if (operation === 'create') data.unavailable = false
+    return data
+  }
+
 /** The site's cache, after a person's change (a sync refreshes once at the end). */
 function refresh(o: ResolvedOptions, tag: 'creators' | 'videos'): CollectionAfterChangeHook {
   return ({ doc, req, context }) => {
@@ -207,7 +264,7 @@ const rejudgeVideos =
       if (v.curation !== want) groups.set(want, [...(groups.get(want) ?? []), String(v.id)])
     }
     for (const [curation, ids] of groups)
-      await req.payload.update({ collection: o.collections.videos, where: { id: { in: ids } }, data: { curation } as never, overrideAccess: true, depth: 0, req, context: syncContext })
+      await req.payload.update({ collection: o.collections.videos, where: { id: { in: ids } }, data: { curation } as never, overrideAccess: true, depth: 0, req: ownContext(req), context: syncContext })
     return doc
   }
 
@@ -390,7 +447,7 @@ function creatorsBase(o: ResolvedOptions): CollectionConfig {
     endpoints: [syncNowEndpoint],
     hooks: {
       beforeValidate: [slugFromName],
-      beforeChange: [siteGuard(o, 'edit'), channelIdsFromLinks, placeAlphabetically(o)],
+      beforeChange: [siteGuard(o, 'edit'), channelIdsFromLinks, creatorSyncState, placeAlphabetically(o)],
       afterChange: [rejudgeVideos(o), refresh(o, 'creators')],
     },
     indexes: o.scope.field ? [{ fields: [o.scope.field, 'slug'], unique: true }] : [],
@@ -456,11 +513,6 @@ const sameSiteCreator =
     return data
   }
 
-/**
- * A curator's choice holds: a curator who isn't the one who decided can't change it. A person's first decision on a
- * video takes the claim with one atomic update, so two curators at once can't both decide; the second gets a 409.
- * Admins and the site's editors can always change it. People never write the claim themselves.
- */
 /** The MongoDB session of the request's transaction, if there is one. */
 async function sessionOf(req: { transactionID?: unknown; payload: { db: unknown } }): Promise<unknown> {
   const id = req.transactionID instanceof Promise ? await req.transactionID : req.transactionID
@@ -468,11 +520,15 @@ async function sessionOf(req: { transactionID?: unknown; payload: { db: unknown 
   return (req.payload.db as { sessions?: Record<string, unknown> }).sessions?.[String(id)]
 }
 
+/**
+ * A curator's choice holds: a curator who isn't the one who decided can't change it. A person's first decision on a
+ * video takes the claim with one atomic update, so two curators at once can't both decide; the second gets a 409.
+ * Admins and the site's editors can always change it. A person's write never sets the claim itself (`videoSyncState`).
+ */
 const claimGuard =
   (o: ResolvedOptions): CollectionBeforeChangeHook =>
   async ({ data, originalDoc, operation, req, context }) => {
     if (operation !== 'update' || !req.user || isSync(context)) return data
-    data.claim = originalDoc?.claim ?? null
     const changing = 'choice' in data && (data.choice ?? null) !== (originalDoc?.choice ?? null)
     if (!changing) return data
     if (await isAdmin(o, req)) return data
@@ -614,7 +670,7 @@ function videosBase(o: ResolvedOptions): CollectionConfig {
     ],
     endpoints: [reviewEndpoint],
     hooks: {
-      beforeChange: [siteGuard(o, 'curate'), sameSiteCreator(o), personEdits, claimGuard(o), curationFromCreator(o), enforceShown],
+      beforeChange: [siteGuard(o, 'curate'), sameSiteCreator(o), videoSyncState(o), personEdits, claimGuard(o), curationFromCreator(o), enforceShown],
       afterChange: [refresh(o, 'videos')],
     },
     indexes: o.scope.field ? [{ fields: [o.scope.field, 'youtubeId'], unique: true }] : [{ fields: ['youtubeId'], unique: true }],
@@ -653,7 +709,9 @@ const ownSitesUsage =
   }
 
 function withGuards(c: CollectionConfig, read: unknown, own: string[], nested: Record<string, string[]>, guard: CollectionBeforeOperationHook): CollectionConfig {
-  return { ...c, fields: guardFields(c.fields, own, read, nested), hooks: { ...c.hooks, beforeOperation: [guard, ...(c.hooks?.beforeOperation ?? [])] } }
+  // Every collection gets its guards here, and none can be duplicated (see `noCopy`). `disableDuplicate` also hides the
+  // admin's Duplicate button and turns off Payload's duplicate routes.
+  return { ...c, disableDuplicate: true, fields: guardFields(c.fields, own, read, nested), hooks: { ...c.hooks, beforeOperation: [noCopy, shapeGuard, guard, ...(c.hooks?.beforeOperation ?? [])], beforeChange: [...(c.hooks?.beforeChange ?? []), shapeGuardChange] } }
 }
 
 export function creatorsCollection(o: ResolvedOptions): CollectionConfig {
