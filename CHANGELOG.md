@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0 (unreleased)
+## 0.3.0 (2026-11-28)
 
 - Renamed from @extantape/payload-plugin-watchlist. Upgrade note: the factory, types, notice kinds, default usage slug, review path, data attributes and context key have new names; follow 'Upgrading from Watchlist' in the README. Tested: typecheck, build, the leak check, `npm pack --dry-run` and the full suite twice (395 run, 2 skipped without the parity snapshot) on Payload 3.92.1 with an in-memory MongoDB, including a ledger kept under the old slug. Not tested: an upgrade of a real site or its database, the upgrade steps run end to end, the admin in a browser, GraphQL through its HTTP route, the SQL adapters, other Payload versions, `scripts/mutate.py` beyond a dry run, or anything on npm.
 
