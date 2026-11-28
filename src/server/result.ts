@@ -50,7 +50,7 @@ export async function serve<T>(req: PayloadRequest, fn: (o: ResolvedOptions) => 
   } catch (error) {
     if (error instanceof PageError) return { error: { code: error.code, message: error.message } }
     try {
-      req.payload.logger.error({ name: (error as { name?: unknown } | null)?.name ?? typeof error }, 'Watchlist: a page’s server function failed')
+      req.payload.logger.error({ name: (error as { name?: unknown } | null)?.name ?? typeof error }, 'Playlists: a page’s server function failed')
     } catch {
       // no logger: nothing more to do
     }

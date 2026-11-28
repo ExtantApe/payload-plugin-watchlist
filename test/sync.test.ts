@@ -1,7 +1,7 @@
 import type { Payload } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
-import { GONE_TITLE, syncCreator, syncDue, type ClassifyHook, type WatchlistOptions } from '../src/index.js'
+import { GONE_TITLE, syncCreator, syncDue, type ClassifyHook, type PlaylistsOptions } from '../src/index.js'
 import { fakeYoutube, type FakeYoutube } from './fakeYoutube.js'
 import { channelId, startPayload, stopMongo, videoId } from './harness.js'
 import { networkCalls } from './setup.js'
@@ -29,7 +29,7 @@ let yt: FakeYoutube
 let state: { key: string | null; enabled: unknown; sleeps: number[] }
 let payload: Payload
 
-async function start(change: (o: WatchlistOptions) => WatchlistOptions = (o) => o) {
+async function start(change: (o: PlaylistsOptions) => PlaylistsOptions = (o) => o) {
   const h = await startPayload((o) =>
     change({
       ...o,
@@ -48,8 +48,8 @@ async function creator(data: Doc = {}) {
 const videosOf = async (creatorId: string) =>
   (await payload.find({ collection: 'videos', where: { creator: { equals: creatorId } }, pagination: false, depth: 0, overrideAccess: true })).docs as unknown as Doc[]
 const byYt = (docs: Doc[]) => new Map(docs.map((d) => [d.youtubeId, d]))
-const usage = async () => (await payload.find({ collection: 'watchlist-usage', overrideAccess: true, pagination: false })).docs as unknown as Doc[]
-const clearUsage = () => payload.delete({ collection: 'watchlist-usage', where: { id: { exists: true } }, overrideAccess: true })
+const usage = async () => (await payload.find({ collection: 'playlists-usage', overrideAccess: true, pagination: false })).docs as unknown as Doc[]
+const clearUsage = () => payload.delete({ collection: 'playlists-usage', where: { id: { exists: true } }, overrideAccess: true })
 
 beforeAll(async () => {
   state = { key: KEY, enabled: true, sleeps: [] }
@@ -304,7 +304,7 @@ describe('quota', () => {
     yt.addChannel(ch, '@capped')
     for (let i = 0; i < 3; i++) yt.upload(ch, { id: videoId(`cap${i}`), title: 'Made-up care' })
     const c = await creator({ channels: [{ handle: '@capped' }] })
-    await payload.db.collections['watchlist-usage']!.collection.updateOne({ day: (await import('../src/index.js')).dayOf(new Date(), 'America/Los_Angeles') }, { $set: { units: 49, quotaStopped: false, bySite: {}, digests: {} } }, { upsert: true })
+    await payload.db.collections['playlists-usage']!.collection.updateOne({ day: (await import('../src/index.js')).dayOf(new Date(), 'America/Los_Angeles') }, { $set: { units: 49, quotaStopped: false, bySite: {}, digests: {} } }, { upsert: true })
     const r = await syncCreator(payload, c.id)
     expect(r.stopped).toBe('cap')
     expect(r.note).toContain('cap of 50 units')

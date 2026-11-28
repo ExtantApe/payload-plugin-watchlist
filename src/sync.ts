@@ -6,7 +6,7 @@ import { ledger as makeLedger, type Ledger } from './ledger.js'
 import { FeedError, readFeed, type FeedEntry } from './rss.js'
 import { channelIdOf, lines, playlistIdOf, ruleHide, ruleKeyOf, youtubeImage, type ChannelRules } from './rules.js'
 import { fullDue, isDue, recheckDue, SYNC_LOCK_MS } from './schedule.js'
-import type { Classified, ResolvedOptions, SiteId, WatchlistNotice } from './types.js'
+import type { Classified, ResolvedOptions, SiteId, PlaylistsNotice } from './types.js'
 import { COST, dataApi, scrub, YouTubeError, type DataApi, type YtVideo } from './youtube.js'
 
 /**
@@ -43,8 +43,8 @@ class Stop extends Error {
 }
 
 export function optionsOf(payload: Payload): ResolvedOptions {
-  const o = (payload.config.custom as { watchlist?: ResolvedOptions } | undefined)?.watchlist
-  if (!o) throw new Error('Watchlist isn’t installed in this Payload config: add watchlist() to its plugins.')
+  const o = (payload.config.custom as { playlists?: ResolvedOptions } | undefined)?.playlists
+  if (!o) throw new Error('Playlists isn’t installed in this Payload config: add playlists() to its plugins.')
   return o
 }
 
@@ -84,7 +84,7 @@ export async function contextFor(payload: Payload, o: ResolvedOptions, req: Payl
   return { enabled, key, fetcher, ledger: makeLedger(payload, o, now), sleep: o.youtube?.sleep ?? sleepReal }
 }
 
-async function tell(o: ResolvedOptions, req: PayloadRequest, enabled: boolean, notice: WatchlistNotice) {
+async function tell(o: ResolvedOptions, req: PayloadRequest, enabled: boolean, notice: PlaylistsNotice) {
   if (!enabled || !o.notify) return
   try {
     await o.notify(notice, { req })
@@ -96,7 +96,7 @@ async function tell(o: ResolvedOptions, req: PayloadRequest, enabled: boolean, n
 /** The run lock: one atomic update, so a second run of the same creator is refused while the first holds it. */
 async function lock(payload: Payload, o: ResolvedOptions, id: string, now: Date): Promise<boolean> {
   const model = (payload.db as unknown as { collections: Record<string, { updateOne: (f: object, u: object) => Promise<{ modifiedCount: number }> }> }).collections[o.collections.creators]
-  if (!model?.updateOne) throw new Error('Watchlist: the run lock needs MongoDB.')
+  if (!model?.updateOne) throw new Error('Playlists: the run lock needs MongoDB.')
   const stale = new Date(now.getTime() - SYNC_LOCK_MS)
   const r = await model.updateOne({ _id: id, $or: [{ syncingSince: null }, { syncingSince: { $exists: false } }, { syncingSince: { $lt: stale } }] }, { $set: { syncingSince: now } })
   return r.modifiedCount === 1
@@ -193,7 +193,7 @@ export async function syncCreator(payload: Payload, creatorId: string, opts: Syn
         const found = await call(COST.channel, () => api.channel(ch.channelId || ch.handle))
         if (!found) {
           notes.push(`No YouTube channel found for ${ch.handle}.`)
-          await tell(o, req, env.enabled, { kind: 'watchlist.sync-problem', site, creator: creatorId, problem: 'channel-not-found', note: ch.handle })
+          await tell(o, req, env.enabled, { kind: 'playlists.sync-problem', site, creator: creatorId, problem: 'channel-not-found', note: ch.handle })
           continue
         }
         Object.assign(ch, { channelId: found.id, title: found.title, uploads: found.uploads })
@@ -355,11 +355,11 @@ export async function syncCreator(payload: Payload, creatorId: string, opts: Syn
     if (error instanceof Stop) {
       report.stopped = error.why
       notes.push(error.why === 'cap' ? `Today’s cap of ${o.dailyUnitCap} units is reached; the next run continues.` : error.why === 'site-cap' ? `This site’s share of today’s units (${o.siteDailyUnitCap}) is used; the next run continues tomorrow.` : 'YouTube’s daily quota is used up; the next run continues.')
-      await tell(o, req, env.enabled, { kind: 'watchlist.sync-problem', site, creator: creatorId, problem: error.why, note: notes.at(-1)! })
+      await tell(o, req, env.enabled, { kind: 'playlists.sync-problem', site, creator: creatorId, problem: error.why, note: notes.at(-1)! })
     } else {
       const message = scrub((error as Error | null)?.message ?? 'unknown error', env.key ?? '')
       notes.push(`Sync stopped: ${message}`)
-      await tell(o, req, env.enabled, { kind: 'watchlist.sync-problem', site, creator: creatorId, problem: 'error', note: message })
+      await tell(o, req, env.enabled, { kind: 'playlists.sync-problem', site, creator: creatorId, problem: 'error', note: message })
     }
   }
   if (o.goneMode === 'clear') report.cleared = await clearGone(payload, o, creatorId, nowDate, req)

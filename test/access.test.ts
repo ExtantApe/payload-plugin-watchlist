@@ -101,9 +101,9 @@ describe('reading', () => {
   })
 
   it('the unit ledger is for editors and admins only', async () => {
-    expect((await h.rest('/watchlist-usage')).status).toBe(403)
-    expect((await h.rest('/watchlist-usage', { token: tokens[curator.id] })).status).toBe(403)
-    expect((await h.rest('/watchlist-usage', { token: tokens[staff.id] })).status).toBe(200)
+    expect((await h.rest('/playlists-usage')).status).toBe(403)
+    expect((await h.rest('/playlists-usage', { token: tokens[curator.id] })).status).toBe(403)
+    expect((await h.rest('/playlists-usage', { token: tokens[staff.id] })).status).toBe(200)
   })
 })
 

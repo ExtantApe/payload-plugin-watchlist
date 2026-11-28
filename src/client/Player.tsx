@@ -43,7 +43,7 @@ export function Player({ youtubeId, title, thumbnail, embeddable, loadOnClick = 
   )
   if (embeddable === false)
     return (
-      <div className={className} data-watchlist-player="link-out">
+      <div className={className} data-playlists-player="link-out">
         {image ? <img src={image} alt="" loading="lazy" referrerPolicy="no-referrer" /> : null}
         <p>
           {labels?.notEmbeddable ?? 'This video can only be watched on YouTube.'} {link}
@@ -51,7 +51,7 @@ export function Player({ youtubeId, title, thumbnail, embeddable, loadOnClick = 
       </div>
     )
   return (
-    <div className={className} data-watchlist-player={playing ? 'playing' : 'waiting'}>
+    <div className={className} data-playlists-player={playing ? 'playing' : 'waiting'}>
       {playing ? (
         <iframe
           ref={frame}

@@ -4,16 +4,16 @@ import { describe, expect, it } from 'vitest'
 import { createAccess, curateAccess, editAccess, exactlyTrue, queryGuard, staffField, readCreators, readVideos } from '../src/access.js'
 import { queueSitesOf } from '../src/curation.js'
 import { protect, functionsOf } from '../src/protect.js'
-import { watchlist, checkOptions, computeShown, dataApi, isDue, isShort, lastSlot, parseFeed, ruleHide, seconds, youtubeImage, channelIdOf, YouTubeError, type WatchlistOptions } from '../src/index.js'
+import { playlists, checkOptions, computeShown, dataApi, isDue, isShort, lastSlot, parseFeed, ruleHide, seconds, youtubeImage, channelIdOf, YouTubeError, SYNC_CONTEXT, type PlaylistsOptions } from '../src/index.js'
 import { scrub } from '../src/youtube.js'
 import { channelId, videoId } from './harness.js'
 
 // Pure parts: the fail-closed gates, the overrides, the rules, the feed parser, the API client's errors, the schedule.
 
 const config = { collections: [{ slug: 'users', auth: true, fields: [] }, { slug: 'taxa', fields: [] }] } as never
-const base = (scope: Partial<WatchlistOptions['scope']> = {}): WatchlistOptions => ({ scope: { field: 'tenant', ofRequest: () => 'A', sitesFor: () => ['A'], isAdmin: () => false, ...scope }, enabled: () => true })
+const base = (scope: Partial<PlaylistsOptions['scope']> = {}): PlaylistsOptions => ({ scope: { field: 'tenant', ofRequest: () => 'A', sitesFor: () => ['A'], isAdmin: () => false, ...scope }, enabled: () => true })
 const req = {} as PayloadRequest
-const build = (o: WatchlistOptions, c: unknown = { collections: [] }) => watchlist(o)(c as never) as import('payload').Config
+const build = (o: PlaylistsOptions, c: unknown = { collections: [] }) => playlists(o)(c as never) as import('payload').Config
 const run = async (access: unknown) => (access as (a: { req: PayloadRequest }) => unknown)({ req: { ...req } })
 
 describe('gates fail closed', () => {
@@ -102,7 +102,7 @@ describe('overrides can’t remove the plugin’s rules', () => {
     expect(await run(throwing.access!.read)).toBe(false)
   })
   it('the plugin’s routes stay, and stay first, whatever an override does to the endpoints', () => {
-    const built = (overrides: WatchlistOptions['overrides']) => build({ ...base(), overrides }).collections!
+    const built = (overrides: PlaylistsOptions['overrides']) => build({ ...base(), overrides }).collections!
     const routes = (c: CollectionConfig) => (Array.isArray(c.endpoints) ? c.endpoints.map((e) => `${e.method} ${e.path}`) : [])
     const plain = built(undefined)
     expect(routes(plain.find((c) => c.slug === 'creators')!)).toEqual(['post /:id/sync'])
@@ -128,22 +128,33 @@ describe('whose review queue', () => {
 })
 
 describe('the admin’s view, link and button', () => {
-  const PKG = '@extantape/payload-plugin-watchlist'
+  const PKG = '@extantape/payload-plugin-playlists'
   it('are registered by the plugin, beside whatever the site already has', () => {
     const out = build(base(), { collections: [], admin: { components: { afterNavLinks: ['site#Link'], views: { site: { Component: 'site#View', path: '/site' } } } } })
     expect(out.admin!.components!.afterNavLinks).toEqual(['site#Link', `${PKG}/rsc#ReviewNavLink`])
-    expect(out.admin!.components!.views).toMatchObject({ site: { path: '/site' }, watchlistReview: { Component: `${PKG}/rsc#ReviewView`, path: '/watchlist-review', exact: true } })
+    expect(out.admin!.components!.views).toMatchObject({ site: { path: '/site' }, playlistsReview: { Component: `${PKG}/rsc#ReviewView`, path: '/playlists-review', exact: true } })
     const field = out.collections!.find((c) => c.slug === 'creators')!.fields.find((f) => 'name' in f && f.name === 'syncNow') as { type: string; admin: { components: { Field: string } } }
     // A UI field: Payload stores nothing for it.
     expect(field.type).toBe('ui')
     expect(field.admin.components.Field).toBe(`${PKG}/rsc#SyncNowField`)
   })
   it('the site can move the view, or leave the view and link out; a bad path is refused', () => {
-    expect((build({ ...base(), admin: { reviewPath: '/watch-review' } }).admin!.components!.views as Record<string, { path: string }>).watchlistReview!.path).toBe('/watch-review')
+    expect((build({ ...base(), admin: { reviewPath: '/watch-review' } }).admin!.components!.views as Record<string, { path: string }>).playlistsReview!.path).toBe('/watch-review')
     const off = build({ ...base(), admin: false })
     expect(off.admin?.components?.views).toBeUndefined()
     expect(off.admin?.components?.afterNavLinks).toBeUndefined()
     for (const reviewPath of ['watch', '/', '/a b', '//x', 'https://example.test', '/x?y=1']) expect(() => checkOptions({ ...base(), admin: { reviewPath } }, config)).toThrow(/admin.reviewPath/)
+  })
+})
+
+describe('the names a site depends on', () => {
+  it('are the Playlists ones: options key, usage slug, context key, review view and import map entry', () => {
+    const out = build(base())
+    expect(out.custom!.playlists).toMatchObject({ collections: { usage: 'playlists-usage' } })
+    expect(out.custom).not.toHaveProperty('watchlist')
+    expect(out.collections!.map((c) => c.slug)).toContain('playlists-usage')
+    expect(SYNC_CONTEXT).toBe('playlistsSync')
+    expect(out.admin!.components!.views).toMatchObject({ playlistsReview: { Component: '@extantape/payload-plugin-playlists/rsc#ReviewView', path: '/playlists-review' } })
   })
 })
 

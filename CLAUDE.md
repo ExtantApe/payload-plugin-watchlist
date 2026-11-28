@@ -1,4 +1,4 @@
-# payload-plugin-watchlist
+# payload-plugin-playlists
 
 Registered in the owner's ops process (`~/Code/ops`). Area: `co-plugins`. Created 2026-11-11 from the ops starter kit.
 

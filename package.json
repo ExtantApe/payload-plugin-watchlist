@@ -1,10 +1,10 @@
 {
-  "name": "@extantape/payload-plugin-watchlist",
-  "version": "0.2.0",
-  "description": "Watchlist for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.",
-  "homepage": "https://github.com/ExtantApe/payload-plugin-watchlist#readme",
+  "name": "@extantape/payload-plugin-playlists",
+  "version": "0.3.0",
+  "description": "Playlists for Payload: a curated list of YouTube creators for your site, with rules per channel, RSS checks before any Data API call, a daily unit cap, a curator's yes where you want one, and click-to-play youtube-nocookie embeds.",
+  "homepage": "https://github.com/ExtantApe/payload-plugin-playlists#readme",
   "bugs": {
-    "url": "https://github.com/ExtantApe/payload-plugin-watchlist/issues"
+    "url": "https://github.com/ExtantApe/payload-plugin-playlists/issues"
   },
   "keywords": [
     "payload",
@@ -17,6 +17,7 @@
     "youtube-data-api",
     "youtube-nocookie",
     "rss",
+    "playlists",
     "video",
     "video-curation",
     "curation",
@@ -26,7 +27,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ExtantApe/payload-plugin-watchlist.git"
+    "url": "git+https://github.com/ExtantApe/payload-plugin-playlists.git"
   },
   "type": "module",
   "exports": {

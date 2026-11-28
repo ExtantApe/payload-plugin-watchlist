@@ -13,8 +13,8 @@ import { channelIdOf, computeShown, isVideoId, youtubeImage } from './rules.js'
 import type { ResolvedOptions } from './types.js'
 
 /** Set on the plugin's own writes (the sync, the review claim), so hooks meant for people leave them alone. */
-export const PACKAGE = '@extantape/payload-plugin-watchlist'
-export const SYNC_CONTEXT = 'watchlistSync'
+export const PACKAGE = '@extantape/payload-plugin-playlists'
+export const SYNC_CONTEXT = 'playlistsSync'
 export const isSync = (context: unknown) => Boolean(context && (context as Record<string, unknown>)[SYNC_CONTEXT] === true)
 export const syncContext = { [SYNC_CONTEXT]: true, disableRevalidate: true }
 /** The request to pass along with `syncContext`: a copy with its own context, for the plugin's own write. */
@@ -270,7 +270,7 @@ const rejudgeVideos =
 
 function creatorsBase(o: ResolvedOptions): CollectionConfig {
   const t = topicNames(o)
-  const group = o.labels?.group ?? 'Watchlist'
+  const group = o.labels?.group ?? 'Playlists'
   const ruleOptions = [
     { label: 'Include only', value: 'include' },
     { label: 'Exclude', value: 'exclude' },
@@ -539,7 +539,7 @@ const claimGuard =
     if (owner && owner !== me) throw new AlreadyDecided()
     if (!owner) {
       const model = (req.payload.db as unknown as { collections: Record<string, { updateOne?: (f: object, u: object, opts?: object) => Promise<{ modifiedCount: number }> }> }).collections[o.collections.videos]
-      if (!model?.updateOne) throw new Error('Watchlist: review claims need MongoDB.')
+      if (!model?.updateOne) throw new Error('Playlists: review claims need MongoDB.')
       const token = `${me}:${randomUUID()}`
       // In the write's own transaction, so the claim and the decision commit together. Two at once: one wins, and the
       // other's transaction meets a write conflict, which is the same answer.
@@ -569,7 +569,7 @@ const enforceShown: CollectionBeforeChangeHook = ({ data, originalDoc }) => {
 
 function videosBase(o: ResolvedOptions): CollectionConfig {
   const t = topicNames(o)
-  const group = o.labels?.group ?? 'Watchlist'
+  const group = o.labels?.group ?? 'Playlists'
   const topicFields: Field[] = o.topics
     ? [
         {
@@ -682,7 +682,7 @@ function usageBase(o: ResolvedOptions): CollectionConfig {
   return {
     slug: o.collections.usage,
     labels: { singular: 'YouTube units (day)', plural: 'YouTube units' },
-    admin: { group: o.labels?.group ?? 'Watchlist', useAsTitle: 'day', defaultColumns: ['day', 'units', 'quotaStopped'] },
+    admin: { group: o.labels?.group ?? 'Playlists', useAsTitle: 'day', defaultColumns: ['day', 'units', 'quotaStopped'] },
     access: { read: createAccess(o), create: nobody, update: nobody, delete: nobody },
     fields: [
       { name: 'day', type: 'text', required: true, unique: true, index: true },

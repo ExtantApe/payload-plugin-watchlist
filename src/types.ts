@@ -45,9 +45,9 @@ export type ClassifyInput = { key: string; title: string; description: string; c
 export type ClassifyHook = (videos: ClassifyInput[], ctx: { req: PayloadRequest }) => Promise<Map<string, Classified>>
 
 /** A message for the site's notifications (or Notifications plugin). */
-export type WatchlistNotice =
-  | { kind: 'watchlist.review'; site: SiteId | null; waiting: number; urgent: boolean }
-  | { kind: 'watchlist.sync-problem'; site: SiteId | null; creator: string; problem: 'quota' | 'cap' | 'site-cap' | 'channel-not-found' | 'error'; note: string }
+export type PlaylistsNotice =
+  | { kind: 'playlists.review'; site: SiteId | null; waiting: number; urgent: boolean }
+  | { kind: 'playlists.sync-problem'; site: SiteId | null; creator: string; problem: 'quota' | 'cap' | 'site-cap' | 'channel-not-found' | 'error'; note: string }
 
 export type TopicsOption = {
   /** The collection a video's topics point at, e.g. `taxa`. */
@@ -78,7 +78,7 @@ export type GoneVideos = 'keep' | 'clear'
 
 export type CollectionOverride = (collection: CollectionConfig) => CollectionConfig
 
-export type WatchlistOptions = {
+export type PlaylistsOptions = {
   collections?: { creators?: string; videos?: string; usage?: string }
   overrides?: { creators?: CollectionOverride; videos?: CollectionOverride; usage?: CollectionOverride }
   scope: ScopeProvider
@@ -123,17 +123,17 @@ export type WatchlistOptions = {
   classifyDescriptionChars?: number
   /** The site's cache: called after a sync or a person's change. */
   revalidate?: (args: { site: SiteId | null; tag: 'creators' | 'videos' }) => void
-  notify?: (notice: WatchlistNotice, ctx: { req: PayloadRequest }) => Promise<void>
+  notify?: (notice: PlaylistsNotice, ctx: { req: PayloadRequest }) => Promise<void>
   labels?: { group?: string; listed?: string }
   /**
    * The admin's review view and its nav link. `reviewPath` is where it lives under the admin route (default
-   * `/watchlist-review`). `false` leaves both out; the Sync now button and the two routes stay.
+   * `/playlists-review`). `false` leaves both out; the Sync now button and the two routes stay.
    */
   admin?: { reviewPath?: string } | false
   ensureIndexes?: 'startup' | 'manual'
 }
 
-export type ResolvedOptions = WatchlistOptions & {
+export type ResolvedOptions = PlaylistsOptions & {
   collections: { creators: string; videos: string; usage: string }
   kinds: Option[]
   shownKinds: string[]

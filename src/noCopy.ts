@@ -9,7 +9,7 @@ import { shapeGuard, shapeGuardChange } from './shape.js'
  */
 export const noCopy: CollectionBeforeOperationHook = ({ args, operation }) => {
   const from = (args as { duplicateFromID?: unknown }).duplicateFromID
-  if (operation === 'create' && from !== undefined && from !== null) throw new APIError('Watchlist records can’t be duplicated. Make a new one instead.', 403, undefined, true)
+  if (operation === 'create' && from !== undefined && from !== null) throw new APIError('Playlists records can’t be duplicated. Make a new one instead.', 403, undefined, true)
 }
 
 /**
